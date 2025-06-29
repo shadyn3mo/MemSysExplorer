@@ -1,0 +1,25 @@
+{
+  "exp_name": "NsightComputeProfilers",
+  "benchmark_name": "runJacobiCUDA_kernel1",
+  "read_freq": 9068157327.586206,
+  "total_reads": 100983.0,
+  "write_freq": 4896372126.436782,
+  "total_writes": 54526.0,
+  "read_size": 32,
+  "write_size": 32,
+  "total_writes_i": 1,
+  "total_writes_d": 1,
+  "total_reads_d": 1,
+  "total_reads_i": 1,
+  "workingset_size": 330514.0,
+  "metadata": null,
+  "unit": {
+    "read_freq": "bytes/s",
+    "write_freq": "bytes/s",
+    "total_reads": "count",
+    "total_writes": "count",
+    "read_size": "bytes",
+    "write_size": "bytes",
+    "workingset_size": "bytes"
+  }
+}

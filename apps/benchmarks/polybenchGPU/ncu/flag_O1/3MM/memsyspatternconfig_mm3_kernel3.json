@@ -1,0 +1,25 @@
+{
+  "exp_name": "NsightComputeProfilers",
+  "benchmark_name": "mm3_kernel3",
+  "read_freq": 1894322365.3934653,
+  "total_reads": 658618.0,
+  "write_freq": 12080703520.478601,
+  "total_writes": 4200219.0,
+  "read_size": 32,
+  "write_size": 32,
+  "total_writes_i": 1,
+  "total_writes_d": 1,
+  "total_reads_d": 1,
+  "total_reads_i": 1,
+  "workingset_size": 18573777.0,
+  "metadata": null,
+  "unit": {
+    "read_freq": "bytes/s",
+    "write_freq": "bytes/s",
+    "total_reads": "count",
+    "total_writes": "count",
+    "read_size": "bytes",
+    "write_size": "bytes",
+    "workingset_size": "bytes"
+  }
+}

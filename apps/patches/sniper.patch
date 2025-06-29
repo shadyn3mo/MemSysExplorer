@@ -1,0 +1,535 @@
+diff --git a/Makefile b/Makefile
+index f594145..6327e11 100644
+--- a/Makefile
++++ b/Makefile
+@@ -2,6 +2,12 @@ SIM_ROOT ?= $(shell readlink -f "$(CURDIR)")
+ 
+ CLEAN=$(findstring clean,$(MAKECMDGOALS))
+ 
++#LD_FLAGS += -L/usr/sup/lib64 -L/usr/sup/lib  # Add required library paths
++
++# Include necessary header files
++#CFLAGS += -I/usr/sup/include
++
++
+ STANDALONE=$(SIM_ROOT)/lib/sniper
+ PIN_FRONTEND=$(SIM_ROOT)/frontend/pin-frontend/obj-intel64/pin_frontend
+ DYNAMORIO_FRONTEND=$(SIM_ROOT)/frontend/dr-frontend/build/libdr-frontend.so
+diff --git a/common/core/memory_subsystem/parametric_dram_directory_msi/cache_cntlr.cc b/common/core/memory_subsystem/parametric_dram_directory_msi/cache_cntlr.cc
+index b966565..2bf4f56 100644
+--- a/common/core/memory_subsystem/parametric_dram_directory_msi/cache_cntlr.cc
++++ b/common/core/memory_subsystem/parametric_dram_directory_msi/cache_cntlr.cc
+@@ -217,6 +217,35 @@ CacheCntlr::CacheCntlr(MemComponent::component_t mem_component,
+ 
+    bzero(&stats, sizeof(stats));
+ 
++   // MemSysExplorer Configuration
++   // Read/Write Initialization
++   m_rw_enabled = false;
++   m_read_access_time = 0;
++   m_write_access_time = 0;
++
++   // Check if rw_enabled exists in the config file before accessing it
++   if (Sim()->getCfg()->hasKey("perf_model/" + cache_params.configName + "/rw_enabled", core_id)) {
++       if (Sim()->getCfg()->getBoolArray("perf_model/" + cache_params.configName + "/rw_enabled", core_id)) {
++        	m_rw_enabled = true;
++        
++        // Check if read/write access time keys exist before fetching values
++       if (Sim()->getCfg()->hasKey("perf_model/" + cache_params.configName + "/read_access_time", core_id)) {
++            	m_read_access_time = Sim()->getCfg()->getFloatArray("perf_model/" + cache_params.configName + "/read_access_time", core_id);
++       }
++       if (Sim()->getCfg()->hasKey("perf_model/" + cache_params.configName + "/write_access_time", core_id)) {
++            	m_write_access_time = Sim()->getCfg()->getFloatArray("perf_model/" + cache_params.configName + "/write_access_time", core_id);
++       }
++    }
++}
++
++   // Register stats only if tracking is enabled
++   if (m_rw_enabled) {
++       registerStatsMetric(name, core_id, "read-latency", &stats.read_latency);
++       registerStatsMetric(name, core_id, "write-latency", &stats.write_latency);
++       registerStatsMetric(name, core_id, "workingset-size", &stats.workingset_size);
++   }
++      
++   ////////////////////////////
+    registerStatsMetric(name, core_id, "loads", &stats.loads);
+    registerStatsMetric(name, core_id, "stores", &stats.stores);
+    registerStatsMetric(name, core_id, "load-misses", &stats.load_misses);
+@@ -402,6 +431,17 @@ MYLOG("L1 hit");
+       getMemoryManager()->incrElapsedTime(m_mem_component, CachePerfModel::ACCESS_CACHE_DATA_AND_TAGS, ShmemPerfModel::_USER_THREAD);
+       hit_where = (HitWhere::where_t)m_mem_component;
+ 
++      //MemSysExplorer Configuration
++      //Add Read/Write Access Time to Simulation if RW tracking is enabled
++      if (m_rw_enabled) {
++      	if (mem_op_type == Core::READ) {
++         	getShmemPerfModel()->incrElapsedTime(SubsecondTime::NS(m_read_access_time), ShmemPerfModel::_USER_THREAD);
++      	}
++      	else if (mem_op_type == Core::WRITE) {
++         	getShmemPerfModel()->incrElapsedTime(SubsecondTime::NS(m_write_access_time), ShmemPerfModel::_USER_THREAD);
++      	}
++      }
++      /////////////////////////////////////////////////////////////////////////
+       if (cache_block_info->hasOption(CacheBlockInfo::WARMUP) && Sim()->getInstrumentationMode() != InstMode::CACHE_ONLY)
+       {
+          stats.hits_warmup++;
+@@ -853,7 +893,20 @@ CacheCntlr::processShmemReqFromPrevCache(CacheCntlr* requester, Core::mem_op_t m
+          }
+          else
+          {
+-            getMemoryManager()->incrElapsedTime(m_mem_component, CachePerfModel::ACCESS_CACHE_DATA_AND_TAGS, ShmemPerfModel::_USER_THREAD);
++            //getMemoryManager()->incrElapsedTime(m_mem_component, CachePerfModel::ACCESS_CACHE_DATA_AND_TAGS, ShmemPerfModel::_USER_THREAD);
++	    // Original line:
++            // getMemoryManager()->incrElapsedTime(m_mem_component, CachePerfModel::ACCESS_CACHE_DATA_AND_TAGS, ShmemPerfModel::_USER_THREAD);
++            if (m_rw_enabled) {
++                if (mem_op_type == Core::READ) {
++                    getMemoryManager()->incrElapsedTime(SubsecondTime::NS(m_read_access_time), ShmemPerfModel::_USER_THREAD);
++                }
++                else {
++                    getMemoryManager()->incrElapsedTime(SubsecondTime::NS(m_write_access_time), ShmemPerfModel::_USER_THREAD);
++                }
++            }
++            else {
++                getMemoryManager()->incrElapsedTime(m_mem_component, CachePerfModel::ACCESS_CACHE_DATA_AND_TAGS, ShmemPerfModel::_USER_THREAD);
++            }
+          }
+       }
+ 
+@@ -1997,6 +2050,13 @@ MYLOG("processFlushReqFromDramDirectory l%d", m_mem_component);
+       // Update Shared Mem perf counters for access to L2 Cache
+       getMemoryManager()->incrElapsedTime(m_mem_component, CachePerfModel::ACCESS_CACHE_DATA_AND_TAGS, ShmemPerfModel::_SIM_THREAD);
+ 
++      //MemSysExplorer Configuration
++      if(m_rw_enabled){
++	 getShmemPerfModel()->incrElapsedTime(SubsecondTime::NS(m_write_access_time), ShmemPerfModel::_SIM_THREAD);
++	 stats.write_latency += m_write_access_time;
++      }
++
++      ////////////////////////////////////
+       // Flush the line
+       Byte data_buf[getCacheBlockSize()];
+       updateCacheBlock(address, CacheState::INVALID, Transition::COHERENCY, data_buf, ShmemPerfModel::_SIM_THREAD);
+@@ -2036,11 +2096,28 @@ MYLOG("processWbReqFromDramDirectory l%d", m_mem_component);
+ 
+       // Write-Back the line
+       Byte data_buf[getCacheBlockSize()];
++
++      //MemSysConfiguration
++      //incur read time before writing back
++      if (m_rw_enabled) {
++         getShmemPerfModel()->incrElapsedTime(SubsecondTime::NS(m_read_access_time), ShmemPerfModel::_SIM_THREAD);
++         stats.read_latency += m_read_access_time;
++      }
++
++      //////////////////////////////////
+       if (cstate != CacheState::SHARED_UPGRADING)
+       {
+          updateCacheBlock(address, CacheState::SHARED, Transition::COHERENCY, data_buf, ShmemPerfModel::_SIM_THREAD);
+       }
+ 
++      //MemSysConfiguration
++      //Incure write time after WB
++      if (m_rw_enabled) {
++         getShmemPerfModel()->incrElapsedTime(SubsecondTime::NS(m_read_access_time), ShmemPerfModel::_SIM_THREAD);
++         stats.read_latency += m_read_access_time;
++      }
++      ////////////////////////////////////////
++
+       shmem_msg->getPerf()->updateTime(getShmemPerfModel()->getElapsedTime(ShmemPerfModel::_SIM_THREAD), ShmemPerf::REMOTE_CACHE_FWD);
+ 
+       getMemoryManager()->sendMsg(PrL1PrL2DramDirectoryMSI::ShmemMsg::WB_REP,
+@@ -2079,6 +2156,20 @@ CacheCntlr::updateCounters(Core::mem_op_t mem_op_type, IntPtr address, bool cach
+    bool cache_data_hit = (state != CacheState::INVALID);
+    m_master->accessATDs(mem_op_type, cache_data_hit, address, m_core_id - m_core_id_master);
+ 
++   if (isPrefetch == Prefetch::NONE) {
++      IntPtr aligned_addr = address & ~(getCacheBlockSize() - 1);
++      UInt64 line_idx = aligned_addr / getCacheBlockSize();
++      
++      // Resize bitmap if needed
++      if (line_idx >= stats.line_bitmap.size())
++         stats.line_bitmap.resize(line_idx + 1, false);
++
++      if (!stats.line_bitmap[line_idx]) {
++         stats.line_bitmap[line_idx] = true;
++         stats.workingset_size += getCacheBlockSize();  // Increment by 64B per new line
++      }
++   }
++
+    if (mem_op_type == Core::WRITE)
+    {
+       if (isPrefetch != Prefetch::NONE)
+@@ -2092,6 +2183,12 @@ CacheCntlr::updateCounters(Core::mem_op_t mem_op_type, IntPtr address, bool cach
+             stats.store_misses_state[state]++;
+             if (overlapping) stats.store_overlapping_misses++;
+          }
++	 
++	 //MemSysExplorer Configuration
++	 if(m_rw_enabled){
++	 	stats.write_latency += m_write_access_time;
++		getShmemPerfModel()->incrElapsedTime(SubsecondTime::NS(m_write_access_time), ShmemPerfModel::_USER_THREAD);
++	 }
+       }
+    }
+    else
+@@ -2107,6 +2204,13 @@ CacheCntlr::updateCounters(Core::mem_op_t mem_op_type, IntPtr address, bool cach
+             stats.load_misses_state[state]++;
+             if (overlapping) stats.load_overlapping_misses++;
+          }
++         
++	 //MemSysExplorer Configuration
++         if (m_rw_enabled) {
++            stats.read_latency += m_read_access_time;
++	    getShmemPerfModel()->incrElapsedTime(SubsecondTime::NS(m_read_access_time), ShmemPerfModel::_USER_THREAD);
++         }
++
+       }
+    }
+ 
+diff --git a/common/core/memory_subsystem/parametric_dram_directory_msi/cache_cntlr.h b/common/core/memory_subsystem/parametric_dram_directory_msi/cache_cntlr.h
+index 57fe85d..7e5bb38 100644
+--- a/common/core/memory_subsystem/parametric_dram_directory_msi/cache_cntlr.h
++++ b/common/core/memory_subsystem/parametric_dram_directory_msi/cache_cntlr.h
+@@ -1,5 +1,6 @@
+ #pragma once
+ 
++#include <vector>
+ #include "core.h"
+ #include "cache.h"
+ #include "prefetcher.h"
+@@ -217,7 +218,16 @@ namespace ParametricDramDirectoryMSI
+          bool m_prefetch_delay;
+          bool m_l1_mshr;
+ 
++	 //MemSysConfiguration
++	 bool m_rw_enabled;
++	 double m_read_access_time;
++	 double m_write_access_time;
++	 
+          struct {
++	   //MemSysConfiguration
++	   UInt64 read_latency, write_latency, workingset_size;
++	   std::vector<bool> line_bitmap;
++	   /////////////////////
+            UInt64 loads, stores;
+            UInt64 load_misses, store_misses;
+            UInt64 load_overlapping_misses, store_overlapping_misses;
+diff --git a/common/core/memory_subsystem/pr_l1_pr_l2_dram_directory_msi/dram_cntlr.cc b/common/core/memory_subsystem/pr_l1_pr_l2_dram_directory_msi/dram_cntlr.cc
+index f8de56f..48dda89 100644
+--- a/common/core/memory_subsystem/pr_l1_pr_l2_dram_directory_msi/dram_cntlr.cc
++++ b/common/core/memory_subsystem/pr_l1_pr_l2_dram_directory_msi/dram_cntlr.cc
+@@ -6,6 +6,7 @@
+ #include "stats.h"
+ #include "fault_injection.h"
+ #include "shmem_perf.h"
++#include "config.hpp"
+ 
+ #if 0
+    extern Lock iolock;
+@@ -27,6 +28,9 @@ DramCntlr::DramCntlr(MemoryManagerBase* memory_manager,
+    : DramCntlrInterface(memory_manager, shmem_perf_model, cache_block_size)
+    , m_reads(0)
+    , m_writes(0)
++   , m_rw_enabled(false)
++   , m_rw_read_latency(SubsecondTime::Zero())
++   , m_rw_write_latency(SubsecondTime::Zero())
+ {
+    m_dram_perf_model = DramPerfModel::createDramPerfModel(
+          memory_manager->getCore()->getId(),
+@@ -39,6 +43,22 @@ DramCntlr::DramCntlr(MemoryManagerBase* memory_manager,
+    m_dram_access_count = new AccessCountMap[DramCntlrInterface::NUM_ACCESS_TYPES];
+    registerStatsMetric("dram", memory_manager->getCore()->getId(), "reads", &m_reads);
+    registerStatsMetric("dram", memory_manager->getCore()->getId(), "writes", &m_writes);
++   
++   //MemSys Configuration
++    if (Sim()->getCfg()->hasKey("perf_model/dram/rw_enabled") &&
++        Sim()->getCfg()->getBool("perf_model/dram/rw_enabled"))
++    {
++        m_rw_enabled = true;
++
++        if (Sim()->getCfg()->hasKey("perf_model/dram/read_access_time"))
++            m_rw_read_latency = SubsecondTime::NS(Sim()->getCfg()->getFloat("perf_model/dram/read_access_time"));
++
++        if (Sim()->getCfg()->hasKey("perf_model/dram/write_access_time"))
++            m_rw_write_latency = SubsecondTime::NS(Sim()->getCfg()->getFloat("perf_model/dram/write_access_time"));
++	
++	registerStatsMetric("dram", memory_manager->getCore()->getId(), "workingset-size", &m_working_set_size);
++    }
++
+ }
+ 
+ DramCntlr::~DramCntlr()
+@@ -68,6 +88,22 @@ DramCntlr::getDataFromDram(IntPtr address, core_id_t requester, Byte* data_buf,
+    }
+ 
+    SubsecondTime dram_access_latency = runDramPerfModel(requester, now, address, READ, perf);
++   
++   //MemSys Configuration
++   if (m_rw_enabled) {
++       getShmemPerfModel()->incrElapsedTime(m_rw_read_latency, ShmemPerfModel::_USER_THREAD);
++       IntPtr aligned_addr = address & ~(getCacheBlockSize() - 1);
++       size_t line_idx = aligned_addr / getCacheBlockSize();
++
++       if (line_idx >= m_line_bitmap.size())
++            m_line_bitmap.resize(line_idx + 1, false);
++
++        if (!m_line_bitmap[line_idx]) {
++           m_line_bitmap[line_idx] = true;
++           m_working_set_size += getCacheBlockSize();
++        }
++   }
++
+ 
+    ++m_reads;
+    #ifdef ENABLE_DRAM_ACCESS_COUNT
+@@ -96,6 +132,22 @@ DramCntlr::putDataToDram(IntPtr address, core_id_t requester, Byte* data_buf, Su
+ 
+    SubsecondTime dram_access_latency = runDramPerfModel(requester, now, address, WRITE, &m_dummy_shmem_perf);
+ 
++   //MemSys Configuration  
++    if (m_rw_enabled) {
++       getShmemPerfModel()->incrElapsedTime(m_rw_write_latency, ShmemPerfModel::_USER_THREAD);
++       IntPtr aligned_addr = address & ~(getCacheBlockSize() - 1);
++       size_t line_idx = aligned_addr / getCacheBlockSize();
++
++       if (line_idx >= m_line_bitmap.size())
++            m_line_bitmap.resize(line_idx + 1, false);
++
++        if (!m_line_bitmap[line_idx]) {
++           m_line_bitmap[line_idx] = true;
++           m_working_set_size += getCacheBlockSize();
++        }
++   }
++
++
+    ++m_writes;
+    #ifdef ENABLE_DRAM_ACCESS_COUNT
+    addToDramAccessCount(address, WRITE);
+@@ -117,6 +169,18 @@ void
+ DramCntlr::addToDramAccessCount(IntPtr address, DramCntlrInterface::access_t access_type)
+ {
+    m_dram_access_count[access_type][address] = m_dram_access_count[access_type][address] + 1;
++   
++   //MemSys Configuration
++   IntPtr aligned_addr = address & ~(getCacheBlockSize() - 1);
++   size_t line_idx = aligned_addr / getCacheBlockSize();
++
++   if (line_idx >= m_line_bitmap.size())
++      m_line_bitmap.resize(line_idx + 1, false);
++
++   if (!m_line_bitmap[line_idx]) {
++      m_line_bitmap[line_idx] = true;
++      m_working_set_size += getCacheBlockSize();
++   }
+ }
+ 
+ void
+diff --git a/common/core/memory_subsystem/pr_l1_pr_l2_dram_directory_msi/dram_cntlr.h b/common/core/memory_subsystem/pr_l1_pr_l2_dram_directory_msi/dram_cntlr.h
+index 3379a9d..2a48a6e 100644
+--- a/common/core/memory_subsystem/pr_l1_pr_l2_dram_directory_msi/dram_cntlr.h
++++ b/common/core/memory_subsystem/pr_l1_pr_l2_dram_directory_msi/dram_cntlr.h
+@@ -12,6 +12,7 @@
+ #include "memory_manager_base.h"
+ #include "dram_cntlr_interface.h"
+ #include "subsecond_time.h"
++#include <vector>
+ 
+ class FaultInjector;
+ 
+@@ -35,6 +36,13 @@ namespace PrL1PrL2DramDirectoryMSI
+          void addToDramAccessCount(IntPtr address, access_t access_type);
+          void printDramAccessCount(void);
+ 
++	 //MemSys Configuration
++	 bool m_rw_enabled;
++         SubsecondTime m_rw_read_latency;
++         SubsecondTime m_rw_write_latency;
++	 std::vector<bool> m_line_bitmap;
++	 UInt64 m_working_set_size = 0;
++
+       public:
+          DramCntlr(MemoryManagerBase* memory_manager,
+                ShmemPerfModel* shmem_perf_model,
+diff --git a/common/performance_model/dram_perf_model_constant.cc b/common/performance_model/dram_perf_model_constant.cc
+index f01c593..f79fd45 100644
+--- a/common/performance_model/dram_perf_model_constant.cc
++++ b/common/performance_model/dram_perf_model_constant.cc
+@@ -11,7 +11,13 @@ DramPerfModelConstant::DramPerfModelConstant(core_id_t core_id,
+    m_queue_model(NULL),
+    m_dram_bandwidth(8 * Sim()->getCfg()->getFloat("perf_model/dram/per_controller_bandwidth")), // Convert bytes to bits
+    m_total_queueing_delay(SubsecondTime::Zero()),
+-   m_total_access_latency(SubsecondTime::Zero())
++   m_total_access_latency(SubsecondTime::Zero()),
++   m_rw_enabled(false),
++   m_rw_read_latency(SubsecondTime::Zero()),
++   m_rw_write_latency(SubsecondTime::Zero()),
++   m_total_read_latency(SubsecondTime::Zero()),
++   m_total_write_latency(SubsecondTime::Zero())
++
+ {
+    m_dram_access_cost = SubsecondTime::FS() * static_cast<uint64_t>(TimeConverter<float>::NStoFS(Sim()->getCfg()->getFloat("perf_model/dram/latency"))); // Operate in fs for higher precision before converting to uint64_t/SubsecondTime
+ 
+@@ -21,6 +27,22 @@ DramPerfModelConstant::DramPerfModelConstant(core_id_t core_id,
+                                          m_dram_bandwidth.getRoundedLatency(8 * cache_block_size)); // bytes to bits
+    }
+ 
++   //MemSys Configuration
++   if (Sim()->getCfg()->hasKey("perf_model/dram/rw_enabled")) {
++      m_rw_enabled = Sim()->getCfg()->getBool("perf_model/dram/rw_enabled");
++   }
++
++   if (m_rw_enabled) {
++      if (Sim()->getCfg()->hasKey("perf_model/dram/read_access_time"))
++         m_rw_read_latency = SubsecondTime::NS(Sim()->getCfg()->getFloat("perf_model/dram/read_access_time"));
++
++      if (Sim()->getCfg()->hasKey("perf_model/dram/write_access_time"))
++         m_rw_write_latency = SubsecondTime::NS(Sim()->getCfg()->getFloat("perf_model/dram/write_access_time"));
++
++      registerStatsMetric("dram", core_id, "read-latency", &m_total_read_latency);
++      registerStatsMetric("dram", core_id, "write-latency", &m_total_write_latency);
++   }
++
+    registerStatsMetric("dram", core_id, "total-access-latency", &m_total_access_latency);
+    registerStatsMetric("dram", core_id, "total-queueing-delay", &m_total_queueing_delay);
+ }
+@@ -58,7 +80,20 @@ DramPerfModelConstant::getAccessLatency(SubsecondTime pkt_time, UInt64 pkt_size,
+       queue_delay = SubsecondTime::Zero();
+    }
+ 
+-   SubsecondTime access_latency = queue_delay + processing_time + m_dram_access_cost;
++   SubsecondTime rw_extra_latency = SubsecondTime::Zero();
++   if (m_rw_enabled) {
++      rw_extra_latency = (access_type == DramCntlrInterface::READ)
++                       ? m_rw_read_latency
++                       : m_rw_write_latency;
++
++      // Only tracking here (not injecting)
++      if (access_type == DramCntlrInterface::READ)
++         m_total_read_latency += rw_extra_latency;
++      else
++         m_total_write_latency += rw_extra_latency;
++   }
++
++   SubsecondTime access_latency = queue_delay + processing_time + m_dram_access_cost + rw_extra_latency;
+ 
+ 
+    perf->updateTime(pkt_time);
+diff --git a/common/performance_model/dram_perf_model_constant.h b/common/performance_model/dram_perf_model_constant.h
+index 33d7173..85be4bc 100644
+--- a/common/performance_model/dram_perf_model_constant.h
++++ b/common/performance_model/dram_perf_model_constant.h
+@@ -17,6 +17,13 @@ class DramPerfModelConstant : public DramPerfModel
+       SubsecondTime m_total_queueing_delay;
+       SubsecondTime m_total_access_latency;
+ 
++      //MemSys Configuration
++      bool m_rw_enabled;
++      SubsecondTime m_rw_read_latency;
++      SubsecondTime m_rw_write_latency;
++      SubsecondTime m_total_read_latency;
++      SubsecondTime m_total_write_latency;
++
+    public:
+       DramPerfModelConstant(core_id_t core_id,
+             UInt32 cache_block_size);
+diff --git a/config/gainestown.cfg b/config/gainestown.cfg
+index 750f56d..0ccd000 100644
+--- a/config/gainestown.cfg
++++ b/config/gainestown.cfg
+@@ -38,6 +38,10 @@ per_controller_bandwidth = 7.6              # In GB/s, as measured by core_valid
+ chips_per_dimm = 8
+ dimms_per_controller = 4
+ 
++rw_enabled = true 
++read_access_time = 30
++write_access_time = 40
++
+ [network]
+ memory_model_1 = bus
+ memory_model_2 = bus
+diff --git a/config/nehalem.cfg b/config/nehalem.cfg
+index df47ba7..00378cf 100644
+--- a/config/nehalem.cfg
++++ b/config/nehalem.cfg
+@@ -53,6 +53,10 @@ perf_model_type = parallel
+ writethrough = 0
+ shared_cores = 1
+ 
++rw_enabled = true
++read_access_time = 5
++write_access_time = 40
++
+ [perf_model/l1_dcache]
+ perfect = false
+ cache_size = 32
+@@ -65,6 +69,10 @@ perf_model_type = parallel
+ writethrough = 0
+ shared_cores = 1
+ 
++rw_enabled = true
++read_access_time = 5
++write_access_time = 40
++
+ [perf_model/l2_cache]
+ perfect = false
+ cache_size = 256
+@@ -80,6 +88,10 @@ perf_model_type = parallel
+ writethrough = 0
+ shared_cores = 1
+ 
++rw_enabled = true
++read_access_time = 1.0
++write_access_time = 30
++
+ [perf_model/l3_cache]
+ cache_block_size = 64
+ address_hash = mask
+@@ -87,6 +99,10 @@ dvfs_domain = global # L1 and L2 run at core frequency (default), L3 is system f
+ prefetcher = none
+ writeback_time = 0
+ 
++rw_enabled = true
++read_access_time = 1.211
++write_access_time = 71.5
++
+ [clock_skew_minimization]
+ scheme = barrier
+ 
+diff --git a/standalone/Makefile b/standalone/Makefile
+index cf093ba..1cb5eb4 100644
+--- a/standalone/Makefile
++++ b/standalone/Makefile
+@@ -51,9 +51,21 @@ else
+    endif
+ endif
+ 
++# These libraries are used by libcarbon, so add them to the end
++#Original Line
++#LD_LIBS += -lxed
++#LD_FLAGS += -L$(XED_HOME)/lib -no-pie
++
+ # These libraries are used by libcarbon, so add them to the end
+ LD_LIBS += -lxed
++
++# Ensure proper library paths are included
+ LD_FLAGS += -L$(XED_HOME)/lib -no-pie
++LD_FLAGS += -L/usr/sup/lib64 -L/usr/sup/lib  # Add required library paths
++
++# Include necessary header files
++CFLAGS += -I/usr/sup/include
++
+ 
+ ifneq ($(CLEAN),clean)
+ -include $(patsubst %.cpp,%.d,$(patsubst %.c,%.d,$(patsubst %.cc,%.d,$(SOURCES))))
+diff --git a/test/fft/Makefile b/test/fft/Makefile
+index 128dcd2..165cce3 100644
+--- a/test/fft/Makefile
++++ b/test/fft/Makefile
+@@ -5,6 +5,6 @@ $(TARGET): $(TARGET).o
+ 	$(CC) $(TARGET).o -lm $(SNIPER_LDFLAGS) -o $(TARGET)
+ 
+ run_$(TARGET):
+-	../../run-sniper -v -n 1 -c gainestown --roi -- ./fft -p 1
++	../../run-sniper -v -n 1 -c gainestown -- ./fft -p 1
+ 
+ CLEAN_EXTRA=viz

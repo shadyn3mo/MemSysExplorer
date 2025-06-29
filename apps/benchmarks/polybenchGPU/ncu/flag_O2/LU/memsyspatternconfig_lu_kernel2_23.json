@@ -1,0 +1,25 @@
+{
+  "exp_name": "NsightComputeProfilers",
+  "benchmark_name": "lu_kernel2",
+  "read_freq": 8578850855.745721,
+  "total_reads": 224560.0,
+  "write_freq": 4900328545.232273,
+  "total_writes": 128271.0,
+  "read_size": 32,
+  "write_size": 32,
+  "total_writes_i": 1,
+  "total_writes_d": 1,
+  "total_reads_d": 1,
+  "total_reads_i": 1,
+  "workingset_size": 1131577.0,
+  "metadata": null,
+  "unit": {
+    "read_freq": "bytes/s",
+    "write_freq": "bytes/s",
+    "total_reads": "count",
+    "total_writes": "count",
+    "read_size": "bytes",
+    "write_size": "bytes",
+    "workingset_size": "bytes"
+  }
+}

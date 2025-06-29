@@ -1,0 +1,33 @@
+digraph "classes_MemSys" {
+rankdir=BT
+charset="utf-8"
+
+# Classes
+"FrontendInterface" [label=<{FrontendInterface|config : dict<br ALIGN="LEFT"/>registered_profilers : dict<br ALIGN="LEFT"/>|create_profiler(name)<br ALIGN="LEFT"/><I>extract_metrics</I>()<br ALIGN="LEFT"/><I>profiling</I>()<br ALIGN="LEFT"/>register_profiler(name, profiler_class)<br ALIGN="LEFT"/>required_extract_args()<br ALIGN="LEFT"/>required_profiling_args()<br ALIGN="LEFT"/>}>, shape="record"];
+"PatternConfig" [label=<{PatternConfig|benchmark_name : str<br ALIGN="LEFT"/>exp_name : str<br ALIGN="LEFT"/>metadata : NoneType<br ALIGN="LEFT"/>read_freq : int<br ALIGN="LEFT"/>read_size : int<br ALIGN="LEFT"/>registered_configs : dict<br ALIGN="LEFT"/>total_reads : int<br ALIGN="LEFT"/>total_writes : int<br ALIGN="LEFT"/>workingset_size : int<br ALIGN="LEFT"/>write_freq : int<br ALIGN="LEFT"/>write_size : int<br ALIGN="LEFT"/>|create_config(name, raw_data, metadata)<br ALIGN="LEFT"/>get_config(name)<br ALIGN="LEFT"/><I>populating</I>(data)<br ALIGN="LEFT"/>register_config(name, config_class)<br ALIGN="LEFT"/>}>, shape="record"];
+
+"DrioMetadata" [label=<{DrioMetadata|app_name<br ALIGN="LEFT"/>app_version<br ALIGN="LEFT"/>drio_version<br ALIGN="LEFT"/>memory_footprint<br ALIGN="LEFT"/>num_threads<br ALIGN="LEFT"/>|}>, shape="record"];
+"DrioProfilers" [label=<{DrioProfilers|data : dict<br ALIGN="LEFT"/>executable<br ALIGN="LEFT"/>|extract_metrics()<br ALIGN="LEFT"/>profiling()<br ALIGN="LEFT"/>}>, shape="record"];
+"DrioConfig" [label=<{DrioConfig|<br ALIGN="LEFT"/>|populating(report_data, metadata)<br ALIGN="LEFT"/>}>, shape="record"];
+
+"NsightComputeConfig" [label=<{NsightComputeConfig|<br ALIGN="LEFT"/>|populating(report_data, metadata)<br ALIGN="LEFT"/>}>, shape="record"];
+"NsightComputeProfilers" [label=<{NsightComputeProfilers|action<br ALIGN="LEFT"/>data : dict<br ALIGN="LEFT"/>executable<br ALIGN="LEFT"/>report : NoneType<br ALIGN="LEFT"/>script_dir<br ALIGN="LEFT"/>section_folder<br ALIGN="LEFT"/>|construct_command()<br ALIGN="LEFT"/>extract_metrics(report_file)<br ALIGN="LEFT"/>profiling()<br ALIGN="LEFT"/>required_extract_args(action)<br ALIGN="LEFT"/>required_profiling_args()<br ALIGN="LEFT"/>validate_paths()<br ALIGN="LEFT"/>}>, shape="record"];
+"NsightMetadata" [label=<{NsightMetadata|cuda_version<br ALIGN="LEFT"/>driver_version<br ALIGN="LEFT"/>gpu_name<br ALIGN="LEFT"/>memory_size<br ALIGN="LEFT"/>|}>, shape="record"];
+
+"SniperMetadata" [label=<{SniperMetadata|architecture<br ALIGN="LEFT"/>cache_hierarchy<br ALIGN="LEFT"/>num_cores<br ALIGN="LEFT"/>simulation_speed<br ALIGN="LEFT"/>|}>, shape="record"];
+"SniperProfilers" [label=<{SniperProfilers|data : dict<br ALIGN="LEFT"/>|extract_metrics()<br ALIGN="LEFT"/>profiling()<br ALIGN="LEFT"/>}>, shape="record"];
+"SniperConfig" [label=<{SniperConfig|<br ALIGN="LEFT"/>|populating(report_data, metadata)<br ALIGN="LEFT"/>}>, shape="record"];
+
+# Relationships between classes
+"FrontendInterface" -> "DrioProfilers" [arrowhead="open"];
+"FrontendInterface" -> "NsightComputeProfilers" [arrowhead="open"];
+"FrontendInterface" -> "SniperProfilers" [arrowhead="open"];
+
+"PatternConfig" -> "NsightComputeConfig" [arrowhead="open"];
+"PatternConfig" -> "DrioConfig" [arrowhead="open"];
+"PatternConfig" -> "SniperConfig" [arrowhead="open"];
+"PatternConfig" -> "DrioMetadata" [arrowhead="open"];
+"PatternConfig" -> "NsightMetadata" [arrowhead="open"];
+"PatternConfig" -> "SniperMetadata" [arrowhead="open"];
+}
+

@@ -1,0 +1,27 @@
+/* Increase overall page content width */
+.wy-nav-content {
+    max-width: 1500px !important;  /* Wider layout to accommodate large tables */
+}
+
+/* Improve table readability */
+table.docutils {
+    width: 100%;
+    border-collapse: collapse;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Apply consistent cell spacing and wrapping */
+.docutils td,
+.docutils th {
+    word-break: break-word;
+    padding: 0.5em 1em;
+    vertical-align: top;
+}
+
+/* Optional: Make emoji icons slightly spaced from text */
+.docutils td::before,
+.docutils th::before {
+    margin-right: 0.25em;
+}
+

@@ -1,0 +1,17 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 03ca1eb79..efd785478 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -50,6 +50,12 @@ cmake_minimum_required(VERSION 3.7)
+ 
+ message(STATUS "CMake version ${CMAKE_VERSION}")
+ 
++set(CMAKE_CXX_STANDARD 17)
++set(CMAKE_CXX_STANDARD_REQUIRED ON)
++set(CMAKE_CXX_EXTENSIONS OFF)
++set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
++set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L/usr/sup/gcc-11.2.0/lib64 -Wl,-rpath,/usr/sup/gcc-11.2.0/lib64 -lstdc++")
++
+ include(make/policies.cmake NO_POLICY_SCOPE)
+ 
+ # for non-makefile-based generators (i.e., Visual Studio) there is no

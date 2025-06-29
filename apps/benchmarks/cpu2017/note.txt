@@ -1,0 +1,3 @@
+Need to set xtest off because xtest instructions are not suportted by sniper 
+
+Way to set it off: setenv GLIBC_TUNABLES glibc.cpu.hwcaps=-AVX

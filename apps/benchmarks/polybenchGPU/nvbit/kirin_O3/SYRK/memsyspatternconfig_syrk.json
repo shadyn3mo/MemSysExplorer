@@ -1,0 +1,21 @@
+{
+  "exp_name": "NVBitProfilers",
+  "benchmark_name": "Unnamed",
+  "read_freq": 903401.95,
+  "total_reads": 67141632,
+  "write_freq": 451921.42,
+  "total_writes": 33587200,
+  "read_size": 4,
+  "write_size": 4,
+  "total_writes_i": 1,
+  "total_writes_d": 1,
+  "total_reads_d": 1,
+  "total_reads_i": 1,
+  "workingset_size": 3223322624,
+  "metadata": null,
+  "unit": {
+    "total_read": "count",
+    "read_freq": "count/s",
+    "write_freq": "count/s"
+  }
+}

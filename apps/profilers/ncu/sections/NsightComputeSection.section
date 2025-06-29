@@ -1,0 +1,177 @@
+Identifier: "NsightComputeSection"
+DisplayName: "Custom Section for generating metrics"
+Description: "This section collects metrics from /home/duskee/Documents/MemSys-Playground/apps/profilers/ncu/configs/l2_settings.conf"
+Header {
+  Metrics {
+    Label: "execution time"
+    Name: "gpu__time_active.sum"
+  }
+  Metrics {
+    Label: "total mio requests (l1 + main memory to l2)"
+    Name: "lts__t_requests.sum"
+  }
+  Metrics {
+    Label: "total mio sectors accessed"
+    Name: "lts__t_sectors.sum"
+  }
+  Metrics {
+    Label: "total read requested"
+    Name: "lts__t_requests_op_read.sum"
+  }
+  Metrics {
+    Label: "total write requested"
+    Name: "lts__t_requests_op_write.sum"
+  }
+  Metrics {
+    Label: "total atomic alu requested"
+    Name: "lts__t_requests_op_atom_dot_alu.sum"
+  }
+  Metrics {
+    Label: "total atomic cas requested"
+    Name: "lts__t_requests_op_atom_dot_cas.sum"
+  }
+  Metrics {
+    Label: "total reduction requested"
+    Name: "lts__t_requests_op_red.sum"
+  }
+  Metrics {
+    Label: "total l1 to l2 requests"
+    Name: "lts__t_requests_srcunit_tex.sum"
+  }
+  Metrics {
+    Label: "l1 to l2 read requests"
+    Name: "lts__t_requests_srcunit_tex_op_read.sum"
+  }
+  Metrics {
+    Label: "l1 to l2 write requests"
+    Name: "lts__t_requests_srcunit_tex_op_write.sum"
+  }
+  Metrics {
+    Label: "l1 to l2 atomic alu requests"
+    Name: "lts__t_requests_srcunit_tex_op_atom_dot_alu.sum"
+  }
+  Metrics {
+    Label: "l1 to l2 atomic cas requests"
+    Name: "lts__t_requests_srcunit_tex_op_atom_dot_cas.sum"
+  }
+  Metrics {
+    Label: "l1 to l2 reduction requests"
+    Name: "lts__t_requests_srcunit_tex_op_red.sum"
+  }
+  Metrics {
+    Label: "l1 to l2 read sectors"
+    Name: "lts__t_sectors_srcunit_tex_op_read.sum"
+  }
+  Metrics {
+    Label: "l1 to l2 write sectors"
+    Name: "lts__t_sectors_srcunit_tex_op_write.sum"
+  }
+  Metrics {
+    Label: "l1 to l2 atomic alu sectors"
+    Name: "lts__t_sectors_srcunit_tex_op_atom_dot_alu.sum"
+  }
+  Metrics {
+    Label: "l1 to l2 atomic cas sectors"
+    Name: "lts__t_sectors_srcunit_tex_op_atom_dot_cas.sum"
+  }
+  Metrics {
+    Label: "l1 to l2 reduction sectors"
+    Name: "lts__t_sectors_srcunit_tex_op_red.sum"
+  }
+  Metrics {
+    Label: "total l2 sectors normal read"
+    Name: "lts__t_sectors_op_read.sum"
+  }
+  Metrics {
+    Label: "total l2 sectors normal write"
+    Name: "lts__t_sectors_op_write.sum"
+  }
+  Metrics {
+    Label: "total l2 sectors atomic alu operation"
+    Name: "lts__t_sectors_op_atom_dot_alu.sum"
+  }
+  Metrics {
+    Label: "total l2 sectors atomic cas operation"
+    Name: "lts__t_sectors_op_atom_dot_cas.sum"
+  }
+  Metrics {
+    Label: "total l2 sectors reduction"
+    Name: "lts__t_sectors_op_red.sum"
+  }
+  Metrics {
+    Label: "l2 normal read throughput"
+    Name: "lts__t_sectors_op_read.sum.per_second"
+  }
+  Metrics {
+    Label: "l2 normal write throughput"
+    Name: "lts__t_sectors_op_write.sum.per_second"
+  }
+  Metrics {
+    Label: "l2 atomic alu throughput"
+    Name: "lts__t_sectors_op_atom_dot_alu.sum.per_second"
+  }
+  Metrics {
+    Label: "l2 atomic cas throughput"
+    Name: "lts__t_sectors_op_atom_dot_cas.sum.per_second"
+  }
+  Metrics {
+    Label: "l2 reduction throughput"
+    Name: "lts__t_sectors_op_red.sum.per_second"
+  }
+  Metrics {
+    Label: "l2 read hit sectors"
+    Name: "lts__t_sectors_srcunit_tex_op_read_lookup_hit.sum"
+  }
+  Metrics {
+    Label: "l2 read miss sectors"
+    Name: "lts__t_sectors_srcunit_tex_op_read_lookup_miss.sum"
+  }
+  Metrics {
+    Label: "l2 write hit sectors"
+    Name: "lts__t_sectors_srcunit_tex_op_write_lookup_hit.sum"
+  }
+  Metrics {
+    Label: "l2 write miss sectors"
+    Name: "lts__t_sectors_srcunit_tex_op_write_lookup_miss.sum"
+  }
+  Metrics {
+    Label: "l2 atomic alu hit sectors"
+    Name: "lts__t_sectors_srcunit_tex_op_atom_dot_alu_lookup_hit.sum"
+  }
+  Metrics {
+    Label: "l2 atomic alu miss sectors"
+    Name: "lts__t_sectors_srcunit_tex_op_atom_dot_alu_lookup_miss.sum"
+  }
+  Metrics {
+    Label: "l2 atomic cas hit sectors"
+    Name: "lts__t_sectors_srcunit_tex_op_atom_dot_cas_lookup_hit.sum"
+  }
+  Metrics {
+    Label: "l2 atomic cas miss sectors"
+    Name: "lts__t_sectors_srcunit_tex_op_atom_dot_cas_lookup_miss.sum"
+  }
+  Metrics {
+    Label: "sectors miss to main memory"
+    Name: "lts__t_sectors_srcunit_tex_aperture_device_lookup_miss.sum"
+  }
+  Metrics {
+    Label: "atomic alu sectors miss to main memory"
+    Name: "lts__t_sectors_srcunit_tex_aperture_device_op_atom_dot_alu_lookup_miss.sum"
+  }
+  Metrics {
+    Label: "atomic cas sectors miss to main memory"
+    Name: "lts__t_sectors_srcunit_tex_aperture_device_op_atom_dot_cas_lookup_miss.sum"
+  }
+  Metrics {
+    Label: "reduction sectors miss to main memory"
+    Name: "lts__t_sectors_srcunit_tex_aperture_device_op_red_lookup_miss.sum"
+  }
+  Metrics {
+    Label: "read sectors miss to main memory"
+    Name: "lts__t_sectors_srcunit_tex_aperture_device_op_read_lookup_miss.sum"
+  }
+  Metrics {
+    Label: "write sectors miss to main memory"
+    Name: "lts__t_sectors_srcunit_tex_aperture_device_op_write_lookup_miss.sum"
+  }
+}

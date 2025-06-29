@@ -1,0 +1,28 @@
+digraph "packages_MemSysApps" {
+rankdir=BT
+charset="utf-8"
+"memsysapplication" [color="black", label=<memsysapplication>, shape="box", style="solid"];
+"memsysapplication.PatternConfig" [color="black", label=<memsysapplication.PatternConfig>, shape="box", style="solid"];
+"memsysapplication.PatternConfigExport" [color="black", label=<memsysapplication.PatternConfigExport>, shape="box", style="solid"];
+"memsysapplication.main" [color="black", label=<memsysapplication.main>, shape="box", style="solid"];
+"memsysapplication.profilers" [color="black", label=<memsysapplication.profilers>, shape="box", style="solid"];
+"memsysapplication.profilers.FrontendInterface" [color="black", label=<memsysapplication.profilers.FrontendInterface>, shape="box", style="solid"];
+"memsysapplication.profilers.dynamorio" [color="black", label=<memsysapplication.profilers.dynamorio>, shape="box", style="solid"];
+"memsysapplication.profilers.dynamorio.drio_profilers" [color="black", label=<memsysapplication.profilers.dynamorio.drio_profilers>, shape="box", style="solid"];
+"memsysapplication.profilers.metadata" [color="black", label=<memsysapplication.profilers.metadata>, shape="box", style="solid"];
+"memsysapplication.profilers.metadata.drio_meta" [color="black", label=<memsysapplication.profilers.metadata.drio_meta>, shape="box", style="solid"];
+"memsysapplication.profilers.metadata.nsight_meta" [color="black", label=<memsysapplication.profilers.metadata.nsight_meta>, shape="box", style="solid"];
+"memsysapplication.profilers.metadata.sniper_meta" [color="black", label=<memsysapplication.profilers.metadata.sniper_meta>, shape="box", style="solid"];
+"memsysapplication.profilers.ncu" [color="black", label=<memsysapplication.profilers.ncu>, shape="box", style="solid"];
+"memsysapplication.profilers.ncu.ncu_parsing" [color="black", label=<memsysapplication.profilers.ncu.ncu_parsing>, shape="box", style="solid"];
+"memsysapplication.profilers.ncu.ncu_profilers" [color="black", label=<memsysapplication.profilers.ncu.ncu_profilers>, shape="box", style="solid"];
+"memsysapplication.profilers.sniper" [color="black", label=<memsysapplication.profilers.sniper>, shape="box", style="solid"];
+"memsysapplication.profilers.sniper.sniper_profilers" [color="black", label=<memsysapplication.profilers.sniper.sniper_profilers>, shape="box", style="solid"];
+"memsysapplication.main" -> "memsysapplication.PatternConfig" [arrowhead="open", arrowtail="none"];
+"memsysapplication.main" -> "memsysapplication.profilers.dynamorio.drio_profilers" [arrowhead="open", arrowtail="none"];
+"memsysapplication.main" -> "memsysapplication.profilers.metadata.drio_meta" [arrowhead="open", arrowtail="none"];
+"memsysapplication.main" -> "memsysapplication.profilers.metadata.nsight_meta" [arrowhead="open", arrowtail="none"];
+"memsysapplication.main" -> "memsysapplication.profilers.metadata.sniper_meta" [arrowhead="open", arrowtail="none"];
+"memsysapplication.main" -> "memsysapplication.profilers.ncu.ncu_profilers" [arrowhead="open", arrowtail="none"];
+"memsysapplication.main" -> "memsysapplication.profilers.sniper.sniper_profilers" [arrowhead="open", arrowtail="none"];
+}
