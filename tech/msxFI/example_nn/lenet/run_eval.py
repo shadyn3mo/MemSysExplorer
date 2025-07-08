@@ -27,8 +27,8 @@ def main():
     SEED = 0
     INT_BITS = 2
     FRAC_BITS = 4
-    Q_TYPE = "afloat"
-    REP_CONF = [8, 8]
+    Q_TYPE = "signed"
+    REP_CONF = [2, 2, 2, 2, 2, 2]
 
     MODEL_PATH = "msxFI/example_nn/lenet/checkpoints/lenet.pth"
     MODEL_DIR = "msxFI/example_nn/lenet"  # Directory containing model.py
@@ -58,7 +58,7 @@ def main():
     faulty_model_rel_path = os.path.join(model_dir_path, faulty_model_name)
     faulty_model_path = os.path.join(WORKSPACE_ROOT, faulty_model_rel_path)
 
-    msxfi_script_path = os.path.join(WORKSPACE_ROOT, "run_msxfi.py")
+    msxfi_script_path = os.path.join(WORKSPACE_ROOT, "msxFI", "run_msxfi.py")
 
     print(f"Changing directory to WORKSPACE_ROOT: {WORKSPACE_ROOT}")
 
@@ -91,10 +91,10 @@ def main():
     model_module_dir = os.path.join(WORKSPACE_ROOT, MODEL_DIR)
     
     existing_pythonpath = current_env.get("PYTHONPATH", "")
+    python_paths = [WORKSPACE_ROOT, model_module_dir]
     if existing_pythonpath:
-        current_env["PYTHONPATH"] = f"{model_module_dir}{os.pathsep}{existing_pythonpath}"
-    else:
-        current_env["PYTHONPATH"] = model_module_dir
+        python_paths.append(existing_pythonpath)
+    current_env["PYTHONPATH"] = os.pathsep.join(python_paths)
 
     print(f"Executing: {shlex.join(cmd_list)}")
     subprocess.run(cmd_list, cwd=WORKSPACE_ROOT, env=current_env, check=True, text=True)
