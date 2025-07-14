@@ -1,0 +1,8 @@
+// Generated worst_case configuration
+// Auto-generated from sample configurations
+
+-MemCellType: CTT
+-CellArea (F^2): 8
+-CellAspectRatio: 2
+-ReadMode: current
+-AccessType: None

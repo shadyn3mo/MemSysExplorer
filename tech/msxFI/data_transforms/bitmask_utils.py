@@ -1,7 +1,16 @@
 import numpy as np
 import random
 import torch
-from .. import fi_config
+try:
+    from ..fi_config import *
+except ImportError:
+    # If relative import fails, try absolute import
+    import sys
+    from pathlib import Path
+    parent_dir = Path(__file__).parent.parent
+    if str(parent_dir) not in sys.path:
+        sys.path.insert(0, str(parent_dir))
+    from fi_config import *
 
 def from_bitmask(wmb, data):
   """
@@ -11,7 +20,7 @@ def from_bitmask(wmb, data):
 
   :param data: Data corresponding to the non-zero elements of matrix M
   """
-  M = torch.zeros(wmb.size()[0], device=fi_config.pt_device, dtype=torch.float32)
+  M = torch.zeros(wmb.size()[0], device=pt_device, dtype=torch.float32)
 
   M[wmb == 1] = data
 

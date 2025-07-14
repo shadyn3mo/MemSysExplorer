@@ -1,0 +1,32 @@
+{
+    "experiment": {
+        "name": "unified_memory_test",
+        "description": "Test unified memory configurations with best_case configs",
+        "process_node": 22,
+        "temperature": 300,
+        "design_target": "cache",
+        "device_roadmap": "LOP",
+        "local_wire_type": "LocalAggressive",
+        "global_wire_type": "GlobalAggressive",
+        "routing": "H-tree",
+        "retention_time": 100,
+        "buffer_design_optimization": "latency",
+        "cell_type": ["SRAM", "RRAM", "FeFET", "CTT", "PCRAM", "STTRAM", "EDRAM1T", "EDRAM3T"],
+        "opt_target": ["ReadLatency"],
+        "capacity_mb": [1],
+        "bits_per_cell": [1]
+    },
+    "access_pattern": {
+        "read_frequency": 0.5,
+        "read_size": 64,
+        "write_frequency": 0.5,
+        "write_size": 64,
+        "working_set": 1000000,
+        "benchmark_name": "test"
+    },
+    "results": {
+        "output_dir": "output/unified_test",
+        "save_csv": true,
+        "save_plots": false
+    }
+}

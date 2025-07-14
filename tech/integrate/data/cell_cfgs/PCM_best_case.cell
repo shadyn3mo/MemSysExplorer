@@ -1,0 +1,16 @@
+-MemCellType: PCRAM
+-CellArea (F^2): 25
+-CellAspectRatio: 1.460000
+-AccessType: CMOS
+-AccessCMOSWidth (F): 6.000000
+-ResistanceOn (ohm): 1000
+-ResistanceOff (ohm): 1000000
+-ReadMode: voltage
+-ReadVoltage (V): 1.000000
+-ReadEnergy (pJ): 2.000000
+-ResetMode: current
+-ResetCurrent (uA): 1.0
+-ResetPulse (ns): 10.0
+-SetMode: current
+-SetCurrent (uA): 0.2
+-SetPulse (ns): 20.0

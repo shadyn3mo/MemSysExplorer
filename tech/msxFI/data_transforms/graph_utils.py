@@ -1,6 +1,5 @@
 import numpy as np
 import snap
-import time
 
 def gen_adj_mat(G):
   """ Generate an adjacency matrix (size NxN for N node graph) for an input snapPY graph

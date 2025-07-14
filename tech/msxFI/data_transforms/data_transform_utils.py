@@ -1,12 +1,16 @@
 import numpy as np
 import torch
-import random
-import pickle
 import sys
-import os
-import time
-import cProfile, pstats
-from .. import fi_config
+
+try:
+    from ..fi_config import *
+except ImportError:
+    import sys
+    from pathlib import Path
+    parent_dir = Path(__file__).parent.parent
+    if str(parent_dir) not in sys.path:
+        sys.path.insert(0, str(parent_dir))
+    from fi_config import *
 
 def get_afloat_bias(num_float, n_exp):
     """
@@ -55,7 +59,7 @@ def get_q_afloat(num_float, n_bits, n_exp, bias):
 
     ## 4. quantize mantissa
     scale = 2 ** (-n_mant) ## e.g. 2 bit, scale = 0.25
-    if fi_config.true_con:
+    if true_con:
         mant = ((mant/scale).round()) * scale
         
         mask = mant > 2.0
@@ -110,8 +114,8 @@ def get_floating_point_binary(orig_flt, precision, q_type):
     conv_tensor = orig_flt.to(target_dtype)
     int_repr = conv_tensor.view(int_dtype)
     batch_size = orig_flt.size(0)
-    binary_matrix = torch.zeros(batch_size, bit_width, dtype=torch.float32, device=fi_config.pt_device)
-    int_vals = int_repr.long().to(fi_config.pt_device)
+    binary_matrix = torch.zeros(batch_size, bit_width, dtype=torch.float32, device=pt_device)
+    int_vals = int_repr.long().to(pt_device)
     for bit_pos in range(bit_width):
         binary_matrix[:, bit_width - 1 - bit_pos] = ((int_vals >> bit_pos) & 1).float()
     return binary_matrix
@@ -195,8 +199,8 @@ def get_binary_array_mat(orig_flt, rep_conf, int_bits, frac_bits, exp_bias, q_ty
   """
 
   # format into binary array according to data format
-  x = torch.zeros(orig_flt.size()[0], int_bits+frac_bits, device=fi_config.pt_device, dtype=torch.float32)
-  current_ =  torch.zeros(orig_flt.size()[0], device=fi_config.pt_device, dtype=torch.float32)
+  x = torch.zeros(orig_flt.size()[0], int_bits+frac_bits, device=pt_device, dtype=torch.float32)
+  current_ =  torch.zeros(orig_flt.size()[0], device=pt_device, dtype=torch.float32)
   xid = 0
   if q_type == 'afloat':
     sign, mant, exp, mask = get_q_afloat(orig_flt, int_bits+frac_bits, frac_bits, exp_bias) 
@@ -208,7 +212,7 @@ def get_binary_array_mat(orig_flt, rep_conf, int_bits, frac_bits, exp_bias, q_ty
       current_ = current_ + 0.5**(mid)*x[:, xid]
       xid += 1
     
-    current_ =  torch.zeros(orig_flt.size()[0], device=fi_config.pt_device, dtype=torch.float32)
+    current_ =  torch.zeros(orig_flt.size()[0], device=pt_device, dtype=torch.float32)
     for eid in list(reversed(range(frac_bits))):
       x[:, xid] = torch.sign(current_ + 2.**(eid) - exp) <= 0
       current_ = current_ + 2.**(eid)*x[:, xid]
@@ -264,13 +268,13 @@ def convert_mlc_mat(num_float, rep_conf, int_bits, frac_bits, exp_bias, q_type):
   # format data into MLCs according to data format
   rep_conf_ = torch.from_numpy(rep_conf)
   x_bin, mask = get_binary_array_mat(num_float, rep_conf_, int_bits, frac_bits, exp_bias, q_type)
-  x_mlc = torch.zeros(num_float.size()[0], len(rep_conf), device=fi_config.pt_device)
+  x_mlc = torch.zeros(num_float.size()[0], len(rep_conf), device=pt_device)
   idx = 0
 
-  rep_conf = torch.tensor(rep_conf, dtype=torch.float32, device=fi_config.pt_device)
+  rep_conf = torch.tensor(rep_conf, dtype=torch.float32, device=pt_device)
   for i in range(len(rep_conf)):
     idx_end = idx + int(torch.log2(rep_conf[i]))
-    x_mlc[:, i] = torch.sum(x_bin[:, idx:idx_end]*(2**(torch.arange(int(torch.log2(rep_conf[i])), 0, -1, device=fi_config.pt_device, dtype=torch.float32)-1)), 1)
+    x_mlc[:, i] = torch.sum(x_bin[:, idx:idx_end]*(2**(torch.arange(int(torch.log2(rep_conf[i])), 0, -1, device=pt_device, dtype=torch.float32)-1)), 1)
     idx = idx_end
   return x_mlc, mask
 
@@ -287,7 +291,7 @@ def convert_f_mat(v_mlc, conf, int_bits, frac_bits, exp_bias, q_type, mask=None)
   :param q_type: data format choice (e.g., signed, unsigned, adaptive floating point)
   :param mask: mask for afloat processing (if applicable)
   """
-  current = torch.zeros(v_mlc.size()[0], device=fi_config.pt_device, dtype = torch.float32)
+  current = torch.zeros(v_mlc.size()[0], device=pt_device, dtype = torch.float32)
   
   if q_type in ['float16', 'bfloat16']:
     total_bits = 16
@@ -298,10 +302,10 @@ def convert_f_mat(v_mlc, conf, int_bits, frac_bits, exp_bias, q_type, mask=None)
   else:
     total_bits = int_bits + frac_bits
   
-  x = torch.zeros(v_mlc.size()[0], total_bits, device=fi_config.pt_device)
+  x = torch.zeros(v_mlc.size()[0], total_bits, device=pt_device)
   
   idx = 0
-  conf = torch.tensor(conf, dtype = torch.float32, device=fi_config.pt_device)
+  conf = torch.tensor(conf, dtype = torch.float32, device=pt_device)
   bin_lut = torch.tensor([[0., 0., 0., 0.], 
                           [0., 0., 0., 1.], 
                           [0., 0., 1., 0.], 
@@ -317,7 +321,7 @@ def convert_f_mat(v_mlc, conf, int_bits, frac_bits, exp_bias, q_type, mask=None)
                           [1., 1., 0., 0.], 
                           [1., 1., 0., 1.], 
                           [1., 1., 1., 0.], 
-                          [1., 1., 1., 1.]], device=fi_config.pt_device) 
+                          [1., 1., 1., 1.]], device=pt_device) 
 
   
   for i in range(len(conf)):
@@ -328,21 +332,21 @@ def convert_f_mat(v_mlc, conf, int_bits, frac_bits, exp_bias, q_type, mask=None)
   
   if q_type == 'afloat':
     mant_bits = int_bits-1
-    is_valid = (x[:, 0] == 0).clone().detach().to(dtype=torch.float32, device=fi_config.pt_device)
+    is_valid = (x[:, 0] == 0).clone().detach().to(dtype=torch.float32, device=pt_device)
     sign = is_valid*2 - 1
     xid = 1
-    mant = torch.zeros(v_mlc.size()[0], device=fi_config.pt_device, dtype=torch.float32)
+    mant = torch.zeros(v_mlc.size()[0], device=pt_device, dtype=torch.float32)
     for mid in range(1, mant_bits+1):
-      is_valid = (x[:, xid] == 1).clone().detach().to(dtype=torch.float32, device=fi_config.pt_device)
+      is_valid = (x[:, xid] == 1).clone().detach().to(dtype=torch.float32, device=pt_device)
       mant = mant + (0.5**(mid))*is_valid
       xid += 1
-    if fi_config.true_con and mask is not None:
+    if true_con and mask is not None:
         mant[mask] = mant[mask] + 1
     else:
         mant = mant + 1
-    exp = torch.zeros(v_mlc.size()[0], device=fi_config.pt_device, dtype=torch.float32)
+    exp = torch.zeros(v_mlc.size()[0], device=pt_device, dtype=torch.float32)
     for eid in list(reversed(range(frac_bits))):
-      is_valid = (x[:,xid] == 1).clone().detach().to(dtype=torch.float32, device=fi_config.pt_device)
+      is_valid = (x[:,xid] == 1).clone().detach().to(dtype=torch.float32, device=pt_device)
       exp = exp + (2.**(eid))*is_valid
       xid += 1
     power_exp = torch.exp2(exp+exp_bias) 
@@ -350,11 +354,11 @@ def convert_f_mat(v_mlc, conf, int_bits, frac_bits, exp_bias, q_type, mask=None)
   elif q_type == 'int':
     xid = 1
     #saves a 1 if the number is negative, a 0 if its positive
-    is_valid = (x[:,0]==1).clone().detach().to(dtype=torch.int, device=fi_config.pt_device)
+    is_valid = (x[:,0]==1).clone().detach().to(dtype=torch.int, device=pt_device)
     #negative and positive 2's complement check
     current = current - (2**(int_bits+frac_bits-1))*is_valid
     for i in list(reversed(range(int_bits+frac_bits-xid))):
-        is_valid = (x[:, xid] == 1).clone().detach().to(dtype=torch.int, device=fi_config.pt_device)
+        is_valid = (x[:, xid] == 1).clone().detach().to(dtype=torch.int, device=pt_device)
         current = current + (2 ** (i))* is_valid
         xid +=1
     return current
@@ -372,15 +376,15 @@ def convert_f_mat(v_mlc, conf, int_bits, frac_bits, exp_bias, q_type, mask=None)
     return current
   else:
     if q_type == 'signed':
-      is_valid = (x[:, 0] == 1).clone().detach().to(dtype=torch.float32, device=fi_config.pt_device)
+      is_valid = (x[:, 0] == 1).clone().detach().to(dtype=torch.float32, device=pt_device)
       current = current - (2.**(int_bits-1))*is_valid
       xid = 1
     for iid in list(reversed(range(int_bits-xid))):
-      is_valid = (x[:, xid] == 1).clone().detach().to(dtype=torch.float32, device=fi_config.pt_device)
+      is_valid = (x[:, xid] == 1).clone().detach().to(dtype=torch.float32, device=pt_device)
       current = current + (2.**(iid))*is_valid
       xid += 1
     for fid in range(1, frac_bits+1):
-      is_valid = (x[:, xid] == 1).clone().detach().to(dtype=torch.float32, device=fi_config.pt_device)
+      is_valid = (x[:, xid] == 1).clone().detach().to(dtype=torch.float32, device=pt_device)
       current = current + (0.5**(fid))*is_valid
       xid += 1
   #print(current)

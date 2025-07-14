@@ -1,0 +1,11 @@
+{
+  "experiment": {
+    "exp_name": "ml_workload_optimization",
+    "cell_type": ["SRAM", "RRAM", "FeFET"],
+    "opt_target": ["ReadEDP", "ReadLatency"],
+    "capacity": [0.125, 0.25],
+    "bits_per_cell": [1],
+    "traffic": ["dnn", "spec"],
+    "output_path": "./output"
+  }
+}

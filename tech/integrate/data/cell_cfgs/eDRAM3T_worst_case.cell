@@ -1,0 +1,14 @@
+// Generated worst_case configuration
+// Auto-generated from sample configurations
+
+-MemCellType: eDRAM3T
+-CellArea (F^2): 836.7
+-CellAspectRatio: 1.62
+-ReadMode: voltage
+-AccessType: CMOS
+-AccessCMOSWidth (F): 1.31
+-AccessCMOSWidthR (F): 2.0
+-DRAMCellCapacitance (F): 3e-15
+-MinSenseVoltage (mV): 10
+-MaxStorageNodeDrop (V): 0.2
+-RetentionTime (us): 10.0

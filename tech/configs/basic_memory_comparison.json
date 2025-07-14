@@ -1,0 +1,12 @@
+{
+  "experiment": {
+    "exp_name": "basic_memory_comparison",
+    "cell_type": ["SRAM", "RRAM", "CTT", "EDRAM1T","EDRAM3T","EDRAM3T333"],
+    "opt_target": ["ReadEDP"],
+    "capacity": [0.125],
+    "process_node": 22,
+    "bits_per_cell": [1,2],
+    "traffic": ["dnn"],
+    "output_path": "./output"
+  }
+}

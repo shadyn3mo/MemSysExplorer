@@ -1,0 +1,40 @@
+{
+  "experiment": {
+    "exp_name": "fault_injection_example",
+    "cell_type": ["RRAM", "FeFET", "SRAM"],
+    "opt_target": ["ReadEDP", "ReadLatency"],
+    "capacity": [0.125, 0.25],
+    "process_node": 22,
+    "bits_per_cell": [1, 2],
+    "traffic": ["generic", "dnn"],
+    "output_path": "./output"
+  },
+  "fault_injection": {
+    "enabled": true,
+    "memory_model": "rram_mlc",
+    "quantization": {
+      "q_type": "signed",
+      "int_bits": 2,
+      "frac_bits": 4
+    },
+    "encoding": "dense",
+    "rep_conf": [2, 2, 2, 2, 2, 2],
+    "analysis": {
+      "compare_baseline": true,
+      "calculate_degradation": true,
+      "fault_statistics": true
+    }
+  },
+  "dram_fault_params": {
+    "refresh_time": 64,
+    "vth_sigma": 0.05,
+    "custom_vdd": null
+  },
+  "neural_network": {
+    "enabled": false,
+    "model_def_path": "",
+    "model_path": "",
+    "inject_weights": true,
+    "inject_activations": false
+  }
+}

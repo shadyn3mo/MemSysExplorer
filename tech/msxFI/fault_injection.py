@@ -1,13 +1,15 @@
 import numpy as np
 import torch
-import random
-import pickle
-import sys
-import time
-import cProfile, pstats
-from .fi_utils import *
-from . import fi_config
-from .data_transforms import *
+
+try:
+    from .fi_utils import *
+    from .fi_config import *
+    from .data_transforms import *
+except ImportError:
+    # If relative imports fail, try absolute imports
+    from fi_utils import *
+    from fi_config import *
+    from data_transforms import *
 
 def mat_fi(mat, seed=0, int_bits=2, frac_bits=6, rep_conf = np.array([2, 2, 2, 2, 2, 2, 2, 2]), q_type = 'signed', encode = 'dense', refresh_time=None, vth_sigma=0.05, custom_vdd=None):
   """ Single fault injection experiment for an input matrix with provided quantization, datatype, optional envocing per value to MLCs, and optional sparse encoding
@@ -28,12 +30,12 @@ def mat_fi(mat, seed=0, int_bits=2, frac_bits=6, rep_conf = np.array([2, 2, 2, 2
   np.random.seed(seed)
   torch.manual_seed(seed)
 
-  if 'dram' in fi_config.mem_model:
+  if 'dram' in mem_model:
     error_map = get_error_map(None, refresh_time=refresh_time, vth_sigma=vth_sigma, custom_vdd=custom_vdd)
     shape = mat.shape
     flattened_mat = torch.from_numpy(mat).view(-1)
-    if fi_config.pt_device == "cuda":
-      flattened_mat = flattened_mat.to(torch.device(fi_config.pt_device))
+    if pt_device == "cuda":
+      flattened_mat = flattened_mat.to(torch.device(pt_device))
     exp_bias = 0
     if q_type == 'afloat': 
       exp_bias = get_afloat_bias(abs(flattened_mat), frac_bits)
@@ -54,14 +56,14 @@ def mat_fi(mat, seed=0, int_bits=2, frac_bits=6, rep_conf = np.array([2, 2, 2, 2
     shape = mat.shape
 
     flattened_mat = torch.from_numpy(mat).view(-1)
-    if fi_config.pt_device == "cuda":
-      flattened_mat = flattened_mat.to(torch.device(fi_config.pt_device))
+    if pt_device == "cuda":
+      flattened_mat = flattened_mat.to(torch.device(pt_device))
     exp_bias = 0
     if q_type == 'afloat': #support for adaptive float
       exp_bias = get_afloat_bias(abs(flattened_mat), frac_bits)
 
     if encode == 'dense': #no sparse encoding, just inject on dense weight matrix
-      mlc_values = torch.zeros((flattened_mat.size()[0], rep_conf.size), device=fi_config.pt_device, dtype=torch.float32)
+      mlc_values = torch.zeros((flattened_mat.size()[0], rep_conf.size), device=pt_device, dtype=torch.float32)
       mlc_values, mask = convert_mlc_mat(flattened_mat, rep_conf, int_bits, frac_bits, exp_bias, q_type)
       mlc_values = inject_faults(mlc_values, rep_conf, error_map)
       flattened_mat = convert_f_mat(mlc_values, rep_conf, int_bits, frac_bits, exp_bias, q_type, mask)
@@ -70,7 +72,7 @@ def mat_fi(mat, seed=0, int_bits=2, frac_bits=6, rep_conf = np.array([2, 2, 2, 2
       #optional check capcity of encoded version
       #print(encoded_capacity(bitmask, data, int_bits+frac_bits)/8.0/1024.0, "KB")
       #set up and inject weights
-      mlc_values=torch.zeros((data.size()[0], rep_conf.size), device=fi_config.pt_device, dtype=torch.float32)
+      mlc_values=torch.zeros((data.size()[0], rep_conf.size), device=pt_device, dtype=torch.float32)
       mlc_values, data_mask = convert_mlc_mat(data, rep_conf, int_bits, frac_bits, exp_bias, q_type)
       mlc_values = inject_faults(mlc_values, rep_conf, error_map)
       data = convert_f_mat(mlc_values, rep_conf, int_bits, frac_bits, exp_bias, q_type, data_mask)
@@ -116,12 +118,15 @@ def dnn_fi(model=None, model_def_path=None, model_path=None, seed=0, int_bits=2,
     model.to(device)
     print(f"Loaded DNN model from {model_path}. Model type: {type(model).__name__}")
 
-  if 'dram' in fi_config.mem_model:
+  if model is None:
+    raise ValueError("Model is required for fault injection but was not provided or loaded successfully")
+    
+  if 'dram' in mem_model:
     error_map = get_error_map(None, refresh_time=refresh_time, vth_sigma=vth_sigma, custom_vdd=custom_vdd)
     for name, weights in model.named_parameters():
         if weights.requires_grad:
             w = weights.data
-            flattened_weights = w.view(-1).to(fi_config.pt_device)
+            flattened_weights = w.view(-1).to(pt_device)
             exp_bias = 0
             if q_type == 'afloat':
                 exp_bias = get_afloat_bias(abs(flattened_weights), frac_bits) 
@@ -147,7 +152,7 @@ def dnn_fi(model=None, model_def_path=None, model_path=None, seed=0, int_bits=2,
         exp_bias = get_afloat_bias(abs(flattened_weights), frac_bits)
 
       if encode == 'dense': #no sparse encoding, just inject on dense weight matrix
-        mlc_weights=torch.zeros((flattened_weights.size()[0], rep_conf.size), device=fi_config.pt_device, dtype=torch.float32)
+        mlc_weights=torch.zeros((flattened_weights.size()[0], rep_conf.size), device=pt_device, dtype=torch.float32)
         mlc_weights, mask = convert_mlc_mat(flattened_weights, rep_conf, int_bits, frac_bits, exp_bias, q_type)
         mlc_weights = inject_faults(mlc_weights, rep_conf, error_map)
         flattened_weights = convert_f_mat(mlc_weights, rep_conf, int_bits, frac_bits, exp_bias, q_type, mask)
@@ -157,7 +162,7 @@ def dnn_fi(model=None, model_def_path=None, model_path=None, seed=0, int_bits=2,
         #optional check capcity of encoded version
         #print(encoded_capacity(bitmask, data, int_bits+frac_bits)/8.0/1024.0, "KB")
         #set up and inject weights
-        mlc_weights=torch.zeros((data.size()[0], rep_conf.size), device=fi_config.pt_device, dtype=torch.float32)
+        mlc_weights=torch.zeros((data.size()[0], rep_conf.size), device=pt_device, dtype=torch.float32)
         mlc_weights, data_mask = convert_mlc_mat(data, rep_conf, int_bits, frac_bits, exp_bias, q_type)
         mlc_weights = inject_faults(mlc_weights, rep_conf, error_map)
         data = convert_f_mat(mlc_weights, rep_conf, int_bits, frac_bits, exp_bias, q_type, data_mask)

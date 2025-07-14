@@ -1,8 +1,22 @@
+#!/usr/bin/env python3
+import sys
+import os
+from pathlib import Path
 import numpy as np
 import argparse
 import torch
-import os
 import random
+# Smart path handling for flexible execution
+current_file = Path(__file__).resolve()
+msxfi_dir = current_file.parent
+tech_dir = msxfi_dir.parent
+project_root = tech_dir.parent
+
+# Add necessary paths to sys.path if not already present
+paths_to_add = [str(tech_dir), str(msxfi_dir)]
+for path in paths_to_add:
+    if path not in sys.path:
+        sys.path.insert(0, path) 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run NVM/DRAM fault injection experiments.")
@@ -85,20 +99,20 @@ def main():
         print(f"Error: {e}")
         return
         
-    import msxFI.fi_config as fi_config
-    from msxFI.fi_utils import validate_config
+    from fi_config import mem_dict, mem_model
+    from fi_utils import validate_config, get_error_map
 
-    if args.mode not in fi_config.mem_dict:
+    if args.mode not in mem_dict:
         print(f"Error: Unknown memory model '{args.mode}'")
-        print(f"Available models: {list(fi_config.mem_dict.keys())}")
+        print(f"Available models: {list(mem_dict.keys())}")
         return
 
     if not validate_config(args, rep_conf_list):
         return
 
-    fi_config.mem_model = args.mode
-    print(f"Set memory model to: {fi_config.mem_model}")
-    from msxFI import fault_injection
+    mem_model = args.mode
+    print(f"Set memory model to: {mem_model}")
+    import fault_injection
 
     if args.seed is None:
         args.seed = random.randint(0, 2**10)
@@ -118,7 +132,7 @@ def main():
     
     if 'dram' in args.mode:
         if args.refresh_t is None:
-            raise ValueError("refresh_time is required for DRAM models")
+            raise ValueError("refresh_t is required for DRAM models")
         base_params['refresh_time'] = args.refresh_t * 1e-6
         base_params['vth_sigma'] = args.vth_sigma / 1000.0  # convert mV to V
         if args.vdd is not None:

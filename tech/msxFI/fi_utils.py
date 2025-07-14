@@ -1,17 +1,17 @@
 import numpy as np
 import torch
-import random
 from statistics import NormalDist
 import scipy.stats as ss
 import pickle
 import sys
 import os
-import time
-import cProfile, pstats
-import re
 import math
-from .data_transforms import * 
-from . import fi_config
+try:
+    from .data_transforms import * 
+    from .fi_config import *
+except ImportError:
+    from data_transforms import *
+    from fi_config import *
 import importlib.util
 
 def get_error_map(max_lvls_cell, refresh_time=None, vth_sigma=0.05, custom_vdd=None):
@@ -24,23 +24,23 @@ def get_error_map(max_lvls_cell, refresh_time=None, vth_sigma=0.05, custom_vdd=N
   :param vth_sigma: Standard deviation of Vth in Volts for DRAM fault rate calculation
   :param custom_vdd: Custom vdd in volts for DRAM models (optional)
   """
-  if 'dram' in fi_config.mem_model:
+  if 'dram' in mem_model:
     mem_data_path = os.path.dirname(__file__)
-    print("Using DRAM model " + fi_config.mem_model)
-    dram_params_path = os.path.join(mem_data_path, 'mem_data', fi_config.mem_dict[fi_config.mem_model])
+    print("Using DRAM model " + mem_model)
+    dram_params_path = os.path.join(mem_data_path, 'mem_data', mem_dict[mem_model])
     with open(dram_params_path, 'rb') as f:
         dram_params_data = pickle.load(f)
     available_sizes = sorted(dram_params_data.keys())
     # Select the largest available size that is <= target feature_size
     selected_size = None
     for size in reversed(available_sizes):
-      if size <= fi_config.feature_size:
+      if size <= feature_size:
         selected_size = size
         break
     if selected_size is None:
       selected_size = available_sizes[0]
     tech_node_data = dram_params_data[selected_size]
-    dist_args = (tech_node_data, fi_config.temperature, selected_size)
+    dist_args = (tech_node_data, temperature, selected_size)
     
     fault_prob = fault_rate_gen(dist_args, refresh_time, vth_sigma, custom_vdd)
     error_map = np.zeros(1, dtype=object)  # DRAM uses SLC
@@ -51,8 +51,8 @@ def get_error_map(max_lvls_cell, refresh_time=None, vth_sigma=0.05, custom_vdd=N
   else:
     #max_lvls_cell is the maximum number of levels encoded in a nvm cell
     mem_data_path = os.path.dirname(__file__)
-    print("Using NVM model "+ fi_config.mem_model)
-    f = open(mem_data_path+'/mem_data/'+fi_config.mem_dict[fi_config.mem_model], 'rb')
+    print("Using NVM model "+ mem_model)
+    f = open(mem_data_path+'/mem_data/'+mem_dict[mem_model], 'rb')
     args_lut = pickle.load(f)
     
     # computes the probability of level faults (either up or down one level)
@@ -79,7 +79,7 @@ def get_error_map(max_lvls_cell, refresh_time=None, vth_sigma=0.05, custom_vdd=N
         # print("Args ", dist_args)
         error_map[i][j, 1] = 1. - fault_rate_gen(dist_args, vth_sigma=vth_sigma)
 
-    if fi_config.Debug:
+    if Debug:
       for i, emap in enumerate(error_map):
         print("Error map for", int(2**(i+1)), "levels")
         print(emap, "\n\n")
@@ -97,23 +97,23 @@ def fault_rate_gen(dist_args, refresh_time=None, vth_sigma=0.05, custom_vdd=None
   :param vth_sigma: standard deviation of Vth in Volts for DRAM fault rate calculation
   :param custom_vdd: custom vdd in volts for DRAM models (optional)
   """
-  if 'rram' in fi_config.mem_model:
+  if 'rram' in mem_model:
     x = dist_args[0]
     mu = dist_args[1]
     sigma = dist_args[2]
     cdf = NormalDist(mu, sigma).cdf(x)
     return cdf
-  elif 'fefet' in fi_config.mem_model:
+  elif 'fefet' in mem_model:
     cdf = ss.gamma.cdf(*dist_args)
     return cdf
-  elif 'dram' in fi_config.mem_model:
+  elif 'dram' in mem_model:
     # Physical constants
     kB = 1.380649e-23  # Boltzmann constant in J/K
     q = 1.60217663e-19  # Elementary charge in C
 
     # DRAM fault rate calculation
     if refresh_time is None:
-      raise ValueError("refresh_time is required for DRAM models")
+      raise ValueError("refresh_t is required for DRAM models")
     tech_node_data, temperature, selected_size = dist_args
     cap_F = tech_node_data['CellCap']
     vdd = custom_vdd if custom_vdd is not None else tech_node_data['vdd']
@@ -131,7 +131,7 @@ def fault_rate_gen(dist_args, refresh_time=None, vth_sigma=0.05, custom_vdd=None
     # Isub ≈ I0 · exp[(Vgs - Vth) / (n·Vt)] → exponential dominates
     # Use 10^x = e^(x·ln(10)): Isub ∝ exp[(Vgs - Vth) · ln(10) / SS]
     # Comparing exponents: ln(10)/SS = 1 / (n·Vt) ⇒ n = SS / (Vt · ln(10))
-    n_factor = fi_config.SS * 1e-3 / (Vt * math.log(10))
+    n_factor = SS * 1e-3 / (Vt * math.log(10))
     # Compute stddev of ln(Ioff) from threshold voltage variation
     sigma_ln_Ioff = vth_sigma / (n_factor * Vt)
     # Convert to stddev of Ioff (log-normal to linear)
@@ -169,12 +169,12 @@ def get_temp_th(dist_args, lvl):
   :param dist_args: arguments describing the distribution of level-to-level faults
   :param lvl: programmed value to specific memory cell (e.g., 0 or 1 for SLC)
   """
-  if 'rram' in fi_config.mem_model:
+  if 'rram' in mem_model:
     temp_th = solveGauss(dist_args[lvl][0], dist_args[lvl][1], dist_args[lvl+1][0], dist_args[lvl+1][1])
     for temp in temp_th:
       if temp > dist_args[lvl][0] and temp < dist_args[lvl+1][0]:
         th = temp
-  elif 'fefet' in fi_config.mem_model:
+  elif 'fefet' in mem_model:
     th = 0.5*(ss.gamma.median(*dist_args[lvl])+ss.gamma.median(*dist_args[lvl+1]))
   else:
     raise SystemExit("ERROR: model not defined; please update fi_config.py")
@@ -190,7 +190,10 @@ def inject_faults(weights, rep_conf=None, error_map=None):
   :param error_map: generated base fault rates according to storage configs and fault model (NVM), or single fault rate (DRAM).
   """
   
-  if 'dram' in fi_config.mem_model:
+  if error_map is None:
+    raise ValueError("error_map is required for fault injection but was None")
+    
+  if 'dram' in mem_model:
     random_tensor = torch.rand_like(weights, device=weights.device)
     ones_mask = (weights == 1)
     fault_prob = error_map[0][1, 0]
@@ -211,6 +214,9 @@ def inject_faults(weights, rep_conf=None, error_map=None):
     return weights
   else:
     # perform fault injection
+    if rep_conf is None:
+      raise ValueError("rep_conf is required for NVM fault injection but was None")
+      
     total_num_faults = 0
 
     for cell in range(np.size(rep_conf)):
@@ -257,6 +263,11 @@ def inject_faults(weights, rep_conf=None, error_map=None):
 def import_model_class(py_path):
     """Import model class from the specified Python file."""
     spec = importlib.util.spec_from_file_location("model", py_path)
+    if spec is None:
+        raise ImportError(f"Could not load module spec from {py_path}")
+    if spec.loader is None:
+        raise ImportError(f"Module spec has no loader for {py_path}")
+        
     model_module = importlib.util.module_from_spec(spec)
     sys.modules["model"] = model_module
     spec.loader.exec_module(model_module)
