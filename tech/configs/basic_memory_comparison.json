@@ -1,11 +1,18 @@
 {
   "experiment": {
     "exp_name": "basic_memory_comparison",
-    "cell_type": ["SRAM", "RRAM", "CTT", "EDRAM1T","EDRAM3T","EDRAM3T333"],
+    "cell_type": ["SRAM", "RRAM", "EDRAM1T","EDRAM3T","EDRAM3T333"],
     "opt_target": ["ReadEDP"],
     "capacity": [0.125],
     "process_node": 22,
-    "bits_per_cell": [1,2],
+    "word_width": 64,
+    "device_roadmap": "LOP",
+    "process_node_r": 22,
+    "device_roadmap_r": "CNT",
+    "process_node_w": 45,
+    "device_roadmap_w": "IGZO",
+    "retention_time_us": 40,
+    "bits_per_cell": [1],
     "traffic": ["dnn"],
     "output_path": "./output"
   }

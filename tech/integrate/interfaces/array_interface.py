@@ -348,12 +348,22 @@ class ArrayCharacterizationInterface:
             }
         }
         
-        # Get base characteristics
-        if memory_type not in base_characteristics:
-            self.logger.warning(f"Unknown memory type {memory_type}, using SRAM defaults")
-            memory_type = "SRAM"
+        # Map memory type for characteristics lookup
+        memory_type_mappings = {
+            "EDRAM1T": "eDRAM1T",
+            "EDRAM3T": "eDRAM3T", 
+            "EDRAM3T333": "eDRAM3T_333",
+            "EDRAM3T_333": "eDRAM3T_333"
+        }
         
-        characteristics = base_characteristics[memory_type].copy()
+        mapped_memory_type = memory_type_mappings.get(memory_type, memory_type)
+        
+        # Get base characteristics
+        if mapped_memory_type not in base_characteristics:
+            self.logger.warning(f"Unknown memory type {memory_type}, using SRAM defaults")
+            mapped_memory_type = "SRAM"
+        
+        characteristics = base_characteristics[mapped_memory_type].copy()
         
         process_scaling = (22.0 / process_node) ** 2
         
@@ -451,7 +461,7 @@ class ArrayCharacterizationInterface:
             self.logger.debug(f"Using generic cell file: {cell_path}")
             return str(cell_path)
         
-        # Handle memory type mappings
+        # Handle memory type mappings to match actual cell files
         memory_type_mappings = {
             "STTRAM": "MRAM",
             "eDRAM1T": "eDRAM", 
@@ -459,7 +469,8 @@ class ArrayCharacterizationInterface:
             "eDRAM3T": "eDRAM3T",
             "EDRAM3T": "eDRAM3T",
             "eDRAM3T_333": "eDRAM3T333",
-            "EDRAM3T_333": "eDRAM3T333"
+            "EDRAM3T_333": "eDRAM3T333",
+            "EDRAM3T333": "eDRAM3T333"
         }
         
         if memory_type in memory_type_mappings:
@@ -507,7 +518,11 @@ class ArrayCharacterizationInterface:
         if isinstance(bits_per_cell, list):
             bits_per_cell = bits_per_cell[0] if bits_per_cell else 1
         
-        config_filename = f"{memory_type}_{capacity_mb:.0f}MB_{opt_target}_{bits_per_cell}BPC-{case}.cfg"
+        if capacity_mb < 1.0:
+            capacity_str = f"{capacity_mb:.3f}MB".rstrip('0').rstrip('.')
+        else:
+            capacity_str = f"{capacity_mb:.0f}MB"
+        config_filename = f"{memory_type}_{capacity_str}_{opt_target}_{bits_per_cell}BPC-{case}.cfg"
         config_path = self.mem_cfgs_dir / config_filename
         
         if config_path.exists():
@@ -566,8 +581,8 @@ class ArrayCharacterizationInterface:
         ]
         
         # Add special process node configurations for eDRAM3T variants
-        if memory_type == "eDRAM3T":
-            # For standard eDRAM3T, use same process node for all transistors unless explicitly specified
+        # Handle both lowercase and uppercase variations
+        if memory_type in ["eDRAM3T", "EDRAM3T"]:
             process_node_r = get_scalar_value(memory_config, 'process_node_r', process_node)
             process_node_w = get_scalar_value(memory_config, 'process_node_w', process_node)
             device_roadmap_r = get_scalar_value(memory_config, 'device_roadmap_r', 'LOP')
@@ -581,8 +596,7 @@ class ArrayCharacterizationInterface:
                 f"-ProcessNodeW: {process_node_w}",
                 f"-DeviceRoadmapW: {device_roadmap_w}"
             ])
-        elif memory_type == "eDRAM3T_333":
-            # For eDRAM3T_333, use specific default values for different transistors
+        elif memory_type in ["eDRAM3T_333", "EDRAM3T_333", "EDRAM3T333"]:
             process_node_r = get_scalar_value(memory_config, 'process_node_r', 22)
             process_node_w = get_scalar_value(memory_config, 'process_node_w', 45)
             device_roadmap_r = get_scalar_value(memory_config, 'device_roadmap_r', 'CNT')
