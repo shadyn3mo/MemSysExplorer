@@ -51,7 +51,6 @@ This framework offers a suite of tools for in-depth memory exploration:
 - **PCM**: Phase Change Memory
 - **STT-MRAM**: Spin-Transfer Torque MRAM
 - **FeFET**: Ferroelectric Field-Effect Transistor
-- **CTT**: Carbon Nanotube Transistor
 - **eDRAM1T**: Single-transistor embedded DRAM
 - **eDRAM3T**: Three-transistor embedded DRAM
 - **eDRAM3T_333**: An advanced 3T eDRAM variant utilizing a multi-process technology:
