@@ -1,11 +1,11 @@
 {
   "experiment": {
     "exp_name": "simple_generic_sweep",
-    "cell_type": ["eDRAM3T","RRAM"],
+    "cell_type": ["eDRAM3T","RRAM", "SRAM"],
     "opt_target": ["ReadLatency"],
     "capacity": [1],
     "bits_per_cell": [1],
-    "case": "worst_case",
+    "case": "best_case",
     "process_node": [22],
     "traffic": ["generic"],
     "output_path": "./output"

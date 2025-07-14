@@ -48,7 +48,6 @@ class MemSysExplorer:
         """Initialize runner with JSON configuration"""
         self.config_path = config_path
         self.config = self._load_config()
-        # Initialize array interface with configuration for fault injection support
         self.array_interface = ArrayCharacterizationInterface(self.config)
         self.logger = self._setup_logging()
         
@@ -170,7 +169,6 @@ class MemSysExplorer:
             capacity: Memory capacity in MB
             bits_per_cell: Bits per memory cell
         """
-        # Handle memory type naming for unified configs
         display_type = cell_type
         self.logger.info(f"→ {display_type} {capacity}MB {opt_target} {bits_per_cell}BPC")
         
@@ -188,7 +186,6 @@ class MemSysExplorer:
             f"{display_type}_{capacity}MB_{opt_target}_{bits_per_cell}BPC-{self.exp_name}.csv"
         )
         
-        # Remove existing CSV file
         if os.path.exists(results_csv):
             os.remove(results_csv)
         
@@ -196,7 +193,6 @@ class MemSysExplorer:
             cell_type, opt_target, capacity, bits_per_cell
         )
         
-        # Create mock NVSim-compatible objects for traffic evaluation
         nvsim_input_cfgs, nvsim_outputs, cell_paths, cfg_paths = self._create_nvsim_compatible_objects(
             array_results, cell_type, opt_target, capacity, bits_per_cell
         )
@@ -207,7 +203,6 @@ class MemSysExplorer:
                 result.evaluate()
                 result.report_header_benchmark(1, results_csv, cell_paths[0], cfg_paths[0])
                 
-                # Check if fault injection is enabled
                 fault_injection_enabled = self.config.get('fault_injection', {}).get('enabled', False)
                 
                 if "generic" in self.traffic:
@@ -237,7 +232,6 @@ class MemSysExplorer:
                 
                 if "spec" in self.traffic:
                     self.logger.info("Running SPEC traffic sweep")
-                    # Note: Using only spec8MBLLC for now (can extend with other SPEC datasets)
                     from integrate.traffic_evaluation.traffic import spec_traffic_single
                     spec_traffic_single(spec8MBLLC, access_pattern, nvsim_input_cfgs, 
                                       nvsim_outputs, results_csv, cell_paths, cfg_paths)
@@ -255,7 +249,13 @@ class MemSysExplorer:
         Returns:
             Dictionary containing array characterization results
         """
-        # Create memory configuration - pass all JSON config parameters to NVSim
+        experiment_config = self.config.get("experiment", {}).copy()
+        experiment_config.pop("bits_per_cell", None)
+        experiment_config.pop("capacity", None)
+        experiment_config.pop("process_node", None)
+        experiment_config.pop("opt_target", None)
+        experiment_config.pop("cell_type", None)
+        
         memory_config = {
             "memory_type": cell_type,
             "process_node": self.process_node,
@@ -263,22 +263,18 @@ class MemSysExplorer:
             "optimization_target": opt_target,
             "word_width": self.word_width,
             "bits_per_cell": bits_per_cell,
-            # Pass through all experiment configuration parameters
-            **self.config.get("experiment", {})
+            **experiment_config
         }
         
         try:
             results = self.array_interface.run_characterization(memory_config)
-            # Removed redundant completion message
             return results
         except Exception as e:
             self.logger.error(f"ArrayCharacterization failed for {cell_type}: {e}")
-            # Return default values to allow traffic evaluation to continue
             return self._get_default_array_results(cell_type)
     
     def _get_default_array_results(self, cell_type: str) -> Dict[str, Any]:
         """Return default array results when ArrayCharacterization fails"""
-        # Default values based on typical memory characteristics
         defaults = {
             "SRAM": {
                 "read_latency_ns": 1.0,
@@ -334,11 +330,8 @@ class MemSysExplorer:
         """
         from integrate.input_defs.nvsim_interface import NVSimInputConfig, NVSimOutputConfig
         
-        # Create mock configuration files (not actually used but needed for compatibility)
         cfg_name = f"{cell_type}_{capacity}MB_{opt_target}_{bits_per_cell}BPC"
         
-        # Get the actual cell file path used by ArrayCharacterizationInterface
-        # This ensures CSV shows the correct path that was actually used
         try:
             memory_config_for_path = {
                 "memory_type": cell_type,
@@ -347,19 +340,25 @@ class MemSysExplorer:
                 "optimization_target": opt_target,
                 "word_width": self.word_width,
                 "bits_per_cell": bits_per_cell,
-                "case": "best_case",  # Default to best_case for display
+                "case": "best_case",
                 **self.config.get("experiment", {})
             }
-            actual_cell_path = self.array_interface._find_cell_file(memory_config_for_path)
-            cell_path = actual_cell_path
+            
+            case = memory_config_for_path.get('case', 'best_case')
+            cell_filename = f"{cell_type}_{case}.cell"
+            cell_path_check = self.array_interface.cell_cfgs_dir / cell_filename
+            
+            if cell_path_check.exists():
+                cell_path = str(cell_path_check)
+            else:
+                cell_path = f"../integrate/data/cell_cfgs/{cell_type}_{case}.cell"
+                
         except Exception as e:
-            # If tentpole path resolution fails, generate expected tentpole path for display
             self.logger.warning(f"Could not resolve actual cell path: {e}")
             cell_path = f"../integrate/data/cell_cfgs/{cell_type}_best_case.cell"
         
         cfg_path = f"data/mem_cfgs/{cfg_name}.cfg"
         
-        # Create NVSim input configuration
         nvsim_input_cfg = NVSimInputConfig(
             mem_cfg_file_path=cfg_path,
             process_node=self.process_node,
@@ -369,7 +368,6 @@ class MemSysExplorer:
             cell_type=cell_type
         )
         
-        # Create NVSim output configuration from ArrayCharacterization results
         nvsim_output = NVSimOutputConfig(
             read_latency=array_results.get("read_latency_ns", 1.0),
             write_latency=array_results.get("write_latency_ns", 1.0),
@@ -379,10 +377,9 @@ class MemSysExplorer:
             area=array_results.get("area_mm2", 0.1),
             read_bw=array_results.get("read_bandwidth_gbps", 100.0),
             write_bw=array_results.get("write_bandwidth_gbps", 100.0),
-            area_efficiency=80.0  # Default area efficiency
+            area_efficiency=80.0
         )
         
-        # Return lists to match expected interface
         return ([nvsim_input_cfg], [nvsim_output], [cell_path], [cfg_path])
 
 
@@ -396,12 +393,10 @@ def main():
     config_path = sys.argv[1]
     
     try:
-        # Validate config file exists
         if not Path(config_path).exists():
             print(f"Error: Configuration file '{config_path}' not found")
             sys.exit(1)
         
-        # Validate it's a valid JSON file
         try:
             with open(config_path, 'r') as f:
                 config = json.load(f)
@@ -414,7 +409,6 @@ def main():
         
         print("Successfully Loaded Config File")
         
-        # Create and run MemSysExplorer
         explorer = MemSysExplorer(config_path)
         results = explorer.run()
         

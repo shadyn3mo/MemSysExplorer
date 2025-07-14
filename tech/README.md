@@ -49,11 +49,11 @@ This framework offers a suite of tools for in-depth memory exploration:
 - **SRAM**: Static Random Access Memory
 - **RRAM**: Resistive Random Access Memory  
 - **PCM**: Phase Change Memory
-- **STT-MRAM**: Spin-Transfer Torque MRAM
+- **STT**: Spin-Transfer Torque MRAM
 - **FeFET**: Ferroelectric Field-Effect Transistor
 - **eDRAM1T**: Single-transistor embedded DRAM
 - **eDRAM3T**: Three-transistor embedded DRAM
-- **eDRAM3T_333**: An advanced 3T eDRAM variant utilizing a multi-process technology:
+- **eDRAM3T333**: An advanced 3T eDRAM variant utilizing a multi-process technology:
 
 ## Configuration System
 

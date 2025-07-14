@@ -1,6 +1,36 @@
 import math
 import pandas as pd
+import numpy as np
 import input_defs
+
+
+def load_spreadsheet_data(cell_type, output_path):
+  """ Returns a pandas dataframe object containing data for a particular NVM technology
+  specified by cell_type from the NVM spreadsheet
+
+  :param cell_type: String indicating which NVM technology to use
+  :type cyll_type: String
+  :return: pandas dataframe object containing the spreadsheet data
+  :rtype: pandas dataframe 
+  """
+  if (cell_type == 'STT'):
+      temp_df = pd.read_pickle("{}/NVM_data/STTRAM_data.pkl".format(output_path))
+  elif (cell_type == 'RRAM'):
+      temp_df = pd.read_pickle("{}/NVM_data/RRAM_data.pkl".format(output_path))
+  elif (cell_type == 'PCM'):
+      temp_df = pd.read_pickle("{}/NVM_data/PCM_data.pkl".format(output_path))
+  elif (cell_type == 'CTT'):
+      temp_df = pd.read_pickle("{}/NVM_data/CTT_data.pkl".format(output_path))
+  elif (cell_type == 'FeFET'):
+      temp_df = pd.read_pickle("{}/NVM_data/FeFET_data.pkl".format(output_path))
+  else:
+      temp_df = pd.read_pickle("{}/NVM_data/RRAM_data.pkl".format(output_path))
+  
+
+  if (cell_type != 'SRAM'):
+      temp_df.replace('', np.nan, inplace = True)
+
+  return temp_df
 
 
 def form_tentpoles(data_df, cell_type, bits_per_cell):
@@ -40,8 +70,10 @@ def form_tentpoles(data_df, cell_type, bits_per_cell):
                   worst_F2_per_Mb = curr_F2_per_Mb
                   worst_F2_per_Mb_idx = index 
   
-  best_case_cell_path = "data/cell_cfgs/{}_best_case.cell".format(cell_type)
-  worst_case_cell_path = "data/cell_cfgs/{}_worst_case.cell".format(cell_type)
+  import os
+  current_dir = os.path.dirname(os.path.abspath(__file__))
+  best_case_cell_path = os.path.join(current_dir, "data/cell_cfgs/{}_best_case.cell".format(cell_type))
+  worst_case_cell_path = os.path.join(current_dir, "data/cell_cfgs/{}_worst_case.cell".format(cell_type))
   
   if (cell_type == 'STT'):
       best_case_cell_cfg = input_defs.cell_cfgs.STTRAMCellConfig(
@@ -174,7 +206,9 @@ def gen_custom_cell(cell_type, custom_cell_inputs):
   :return: path to NVSim cell file and :class:`NVSimInputConfig` object containing NVSim input cfgs 
   """
   
-  cell_path = "data/cell_cfgs/{}_{}.cell".format(cell_type, custom_cell_inputs["name"])
+  import os
+  current_dir = os.path.dirname(os.path.abspath(__file__))
+  cell_path = os.path.join(current_dir, "data/cell_cfgs/{}_{}.cell".format(cell_type, custom_cell_inputs["name"]))
  
   if (cell_type == 'STT'):
       cell_cfg = input_defs.cell_cfgs.STTRAMCellConfig(
@@ -258,7 +292,7 @@ def gen_custom_cell(cell_type, custom_cell_inputs):
       cell_cfg.generate_cell_file()
       cell_cfg.append_cell_file()
   
-  elif (cell_type == 'CTT'): #FIXME fill in with details
+  elif (cell_type == 'CTT'):
       cell_cfg = input_defs.cell_cfgs.CTTCellConfig()
       if "cell_size_F2" in custom_cell_inputs:
           cell_cfg.cell_area = custom_cell_inputs["cell_size_F2"]
@@ -378,7 +412,6 @@ def gen_custom_cell(cell_type, custom_cell_inputs):
       cell_cfg.append_cell_file()
 
   else:
-      #Base SRAM cell
       cell_cfg = input_defs.cell_cfgs.SRAMCellConfig(
           cell_area_F2 = 146,
           cell_file_path=cell_path)

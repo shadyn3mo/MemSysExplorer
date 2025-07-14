@@ -1,5 +1,5 @@
 -MemCellType: memristor
--CellArea (F^2): 53
+-CellArea (F^2): 4
 -CellAspectRatio: 1.460000
 -AccessType: CMOS
 -AccessCMOSWidth (F): 6.000000

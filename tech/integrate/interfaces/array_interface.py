@@ -20,7 +20,7 @@ current_dir = Path(__file__).parent.parent
 sys.path.append(str(current_dir))
 
 # Import modules
-# from tentpoles import form_tentpoles  # Temporarily disabled due to pandas dependency
+from tentpoles import form_tentpoles
 from input_defs.nvsim_interface import NVSimInputConfig
 
 # Import fault injection controller
@@ -45,7 +45,7 @@ class ArrayCharacterizationInterface:
         self.array_char_dir = current_dir / "ArrayCharacterization"
         self.executable_path = self.array_char_dir / "nvsim"
         
-        # Setup data and configuration paths  
+        # Setup data and configuration paths
         self.integrate_dir = current_dir / "integrate"
         self.data_dir = self.integrate_dir / "data"
         self.mem_cfgs_dir = self.data_dir / "mem_cfgs"
@@ -261,8 +261,8 @@ class ArrayCharacterizationInterface:
         
         return impact_factors
     
-    def _get_default_characteristics(self, memory_type: str, process_node: int, 
-                                   capacity_mb: float) -> Dict[str, Any]:
+    def _get_default_characteristics(self, memory_type: str, process_node, 
+                                   capacity_mb) -> Dict[str, Any]:
         """
         Get default characteristics for memory type
         
@@ -336,7 +336,7 @@ class ArrayCharacterizationInterface:
                 "read_bandwidth_gbps": 90.0,
                 "write_bandwidth_gbps": 85.0
             },
-            "eDRAM3T_333": {
+            "eDRAM3T333": {
                 "read_latency_ns": 1.5,
                 "write_latency_ns": 1.8,
                 "read_energy_pj": 10.0,
@@ -351,9 +351,7 @@ class ArrayCharacterizationInterface:
         # Map memory type for characteristics lookup
         memory_type_mappings = {
             "EDRAM1T": "eDRAM1T",
-            "EDRAM3T": "eDRAM3T", 
-            "EDRAM3T333": "eDRAM3T_333",
-            "EDRAM3T_333": "eDRAM3T_333"
+            "EDRAM3T": "eDRAM3T"
         }
         
         mapped_memory_type = memory_type_mappings.get(memory_type, memory_type)
@@ -364,6 +362,12 @@ class ArrayCharacterizationInterface:
             mapped_memory_type = "SRAM"
         
         characteristics = base_characteristics[mapped_memory_type].copy()
+        
+        # Ensure process_node and capacity_mb are scalar values
+        if isinstance(process_node, list):
+            process_node = process_node[0] if process_node else 22
+        if isinstance(capacity_mb, list):
+            capacity_mb = capacity_mb[0] if capacity_mb else 1.0
         
         process_scaling = (22.0 / process_node) ** 2
         
@@ -453,23 +457,23 @@ class ArrayCharacterizationInterface:
         if cell_path.exists():
             self.logger.debug(f"Using tentpole cell file: {cell_path}")
             return str(cell_path)
+        
+        if case in ['best_case', 'worst_case']:
+            self.logger.info(f"Tentpole file {cell_filename} not found for {memory_type}, will generate")
+        else:
+            cell_filename = f"{memory_type}.cell"
+            cell_path = self.cell_cfgs_dir / cell_filename
             
-        cell_filename = f"{memory_type}.cell"
-        cell_path = self.cell_cfgs_dir / cell_filename
+            if cell_path.exists():
+                self.logger.debug(f"Using generic cell file: {cell_path}")
+                return str(cell_path)
+            else:
+                self.logger.info(f"No generic cell file found for {memory_type}, will generate tentpole files")
         
-        if cell_path.exists():
-            self.logger.debug(f"Using generic cell file: {cell_path}")
-            return str(cell_path)
-        
-        # Handle memory type mappings to match actual cell files
         memory_type_mappings = {
             "STTRAM": "MRAM",
-            "eDRAM1T": "eDRAM", 
-            "EDRAM1T": "eDRAM",
-            "eDRAM3T": "eDRAM3T",
-            "EDRAM3T": "eDRAM3T",
-            "eDRAM3T_333": "eDRAM3T333",
-            "EDRAM3T_333": "eDRAM3T333",
+            "EDRAM1T": "eDRAM1T",
+            "EDRAM3T": "eDRAM3T", 
             "EDRAM3T333": "eDRAM3T333"
         }
         
@@ -492,12 +496,39 @@ class ArrayCharacterizationInterface:
                 self.logger.debug(f"Using mapped generic cell file: {cell_path}")
                 return str(cell_path)
         
-        # If no tentpole files found, this is an error since tentpoles should auto-generate
-        raise FileNotFoundError(
-            f"No tentpole cell file found for {memory_type}_{case}. "
-            f"Expected file: {self.cell_cfgs_dir / cell_filename}. "
-            f"Tentpole files should be auto-generated."
-        )
+        self.logger.info(f"Tentpole files not found for {memory_type}, generating them...")
+        
+        try:
+            from tentpoles import load_spreadsheet_data
+            
+            data_path = str(self.integrate_dir / "data")
+            data_df = load_spreadsheet_data(memory_type, data_path)
+            
+            bits_per_cell = memory_config.get('bits_per_cell', 1)
+            if isinstance(bits_per_cell, list):
+                bits_per_cell = bits_per_cell[0] if bits_per_cell else 1
+                
+            best_case_cell_path, worst_case_cell_path, best_case_cell_cfg, worst_case_cell_cfg = form_tentpoles(
+                data_df, memory_type, bits_per_cell
+            )
+            
+            self.logger.info(f"Generated tentpoles for {memory_type}: {best_case_cell_path}, {worst_case_cell_path}")
+            
+            cell_filename = f"{memory_type}_{case}.cell"
+            cell_path = self.cell_cfgs_dir / cell_filename
+            
+            if cell_path.exists():
+                self.logger.debug(f"Using generated tentpole cell file: {cell_path}")
+                return str(cell_path)
+            else:
+                self.logger.warning(f"Generated tentpole file not found at expected location, using fallback")
+                return best_case_cell_path
+                
+        except Exception as e:
+            self.logger.error(f"Failed to generate tentpoles for {memory_type}: {e}")
+            raise FileNotFoundError(
+                f"No tentpole cell file found for {memory_type}_{case} and failed to generate: {e}"
+            )
     
     def _get_or_generate_config_file(self, memory_config: Dict[str, Any]) -> str:
         """
@@ -531,13 +562,10 @@ class ArrayCharacterizationInterface:
         
         self.logger.debug(f"Generating new config: {config_path}")
         
-        # Find cell file first
         cell_path = self._find_cell_file(memory_config)
         
-        # Generate config content using NVSimInputConfig
         config_content = self._generate_config_content(memory_config, cell_path)
         
-        # Write config file
         with open(config_path, 'w') as f:
             f.write(config_content)
             
@@ -551,28 +579,21 @@ class ArrayCharacterizationInterface:
         capacity_kb = int(capacity_mb * 1024)
         memory_type = memory_config.get('memory_type', 'SRAM')
         
-        # Helper function to extract scalar values from lists
         def get_scalar_value(config, key, default):
             value = config.get(key, default)
             if isinstance(value, list):
                 return value[0] if value else default
             return value
         
-        # Convert absolute cell path to relative path for config file
         if cell_path.startswith(str(self.cell_cfgs_dir)):
-            # Convert absolute path to relative path from ArrayCharacterization directory
-            # The path should be relative to ArrayCharacterization directory
             cell_relative_path = f"../integrate/data/cell_cfgs/{Path(cell_path).name}"
         else:
-            # Already a relative path or fallback path
             cell_relative_path = cell_path
         
-        # Get scalar values for configuration parameters
         process_node = get_scalar_value(memory_config, 'process_node', 22)
         word_width = get_scalar_value(memory_config, 'word_width', 64)
         opt_target = get_scalar_value(memory_config, 'optimization_target', 'ReadLatency')
         
-        # Build config content following NVMExplorer format
         config_lines = [
             f"-MemoryCellInputFile: {cell_relative_path}",
             "",
@@ -580,8 +601,6 @@ class ArrayCharacterizationInterface:
             f"-DeviceRoadmap: LOP"
         ]
         
-        # Add special process node configurations for eDRAM3T variants
-        # Handle both lowercase and uppercase variations
         if memory_type in ["eDRAM3T", "EDRAM3T"]:
             process_node_r = get_scalar_value(memory_config, 'process_node_r', process_node)
             process_node_w = get_scalar_value(memory_config, 'process_node_w', process_node)
@@ -596,7 +615,7 @@ class ArrayCharacterizationInterface:
                 f"-ProcessNodeW: {process_node_w}",
                 f"-DeviceRoadmapW: {device_roadmap_w}"
             ])
-        elif memory_type in ["eDRAM3T_333", "EDRAM3T_333", "EDRAM3T333"]:
+        elif memory_type in ["EDRAM3T333", "eDRAM3T333"]:
             process_node_r = get_scalar_value(memory_config, 'process_node_r', 22)
             process_node_w = get_scalar_value(memory_config, 'process_node_w', 45)
             device_roadmap_r = get_scalar_value(memory_config, 'device_roadmap_r', 'CNT')
@@ -611,7 +630,6 @@ class ArrayCharacterizationInterface:
                 f"-DeviceRoadmapW: {device_roadmap_w}"
             ])
         
-        # Add common configuration parameters
         config_lines.extend([
             "",
             f"-DesignTarget: cache",
@@ -659,13 +677,10 @@ class ArrayCharacterizationInterface:
         Returns:
             Path to updated config file
         """
-        # Read the unified config
         with open(unified_config_path, 'r') as f:
             lines = f.readlines()
         
-        # Update specific parameters
         capacity_mb = memory_config.get('capacity_mb', 1.0)
-        # Handle case where capacity_mb might be a list
         if isinstance(capacity_mb, list):
             capacity_mb = capacity_mb[0] if capacity_mb else 1.0
         capacity_kb = int(capacity_mb * 1024)
@@ -698,7 +713,6 @@ class ArrayCharacterizationInterface:
             else:
                 updated_lines.append(line)
         
-        # Create temporary config file
         with tempfile.NamedTemporaryFile(mode='w', suffix='.cfg', delete=False) as tmp_file:
             tmp_file.writelines(updated_lines)
             temp_config_path = tmp_file.name
@@ -749,8 +763,7 @@ class ArrayCharacterizationInterface:
         with tempfile.NamedTemporaryFile(mode='w', suffix='.cfg', delete=False) as f:
             config_content = f"-MemoryCellInputFile: {cell_file}\n\n"
             
-            # Handle eDRAM3T_333 special format
-            if memory_type == "eDRAM3T_333":
+            if memory_type in ["eDRAM3T333"]:
                 # Use separate read/write process nodes and roadmaps
                 process_node_r = memory_config.get('process_node_r', 22)
                 device_roadmap_r = memory_config.get('device_roadmap_r', 'CNT')

@@ -6,7 +6,7 @@ traffic evaluation and performance analysis.
 """
 
 import os
-import math
+import numpy as np
 import fileinput
 import csv
 from typing import List, Tuple, Optional, TYPE_CHECKING
@@ -33,7 +33,6 @@ def parse_nvsim_input_file(file_path: str) -> Tuple[List[str], List[str]]:
             for line in fp:
                 line = line.strip()
                 if ':' in line and line.startswith('-'):
-                    # Split on first colon only
                     parts = line.split(':', 1)
                     if len(parts) == 2:
                         header = parts[0].strip()
@@ -96,13 +95,13 @@ class ExperimentResult:
             raise ValueError("nvsim_output is required for evaluation")
         
         if (self.access_pattern.read_freq == -1 or self.access_pattern.write_freq == -1):
-            self.access_pattern.read_freq = (self.access_pattern.total_reads / self.access_pattern.total_ins) / 1.e8  # FIXME yikes I'm having to assume an IPC to approximate this?
-            self.access_pattern.write_freq = (self.access_pattern.total_writes / self.access_pattern.total_ins) / 1.e8  # FIXME yikes I'm having to assume an IPC to approximate this?
+            self.access_pattern.read_freq = (self.access_pattern.total_reads / self.access_pattern.total_ins) / 1.e8
+            self.access_pattern.write_freq = (self.access_pattern.total_writes / self.access_pattern.total_ins) / 1.e8
         
-        self.read_per_s = math.ceil((8 * self.access_pattern.read_size * self.access_pattern.read_freq) / self.input_cfg.word_width)
+        self.read_per_s = np.ceil((8 * self.access_pattern.read_size * self.access_pattern.read_freq) / self.input_cfg.word_width)
         self.total_dynamic_read_power = self.read_per_s * self.output.read_energy / 1000. / 1000. / 1000.
         
-        self.write_per_s = math.ceil((8 * self.access_pattern.write_size * self.access_pattern.write_freq) / self.input_cfg.word_width)
+        self.write_per_s = np.ceil((8 * self.access_pattern.write_size * self.access_pattern.write_freq) / self.input_cfg.word_width)
         self.total_dynamic_write_power = self.write_per_s * self.output.write_energy / 1000. / 1000. /1000.
 
         self.total_power = self.output.leakage_power + self.total_dynamic_read_power + self.total_dynamic_write_power
@@ -113,9 +112,9 @@ class ExperimentResult:
             self.total_read_latency = self.read_per_s * self.output.read_latency / 1000. / 1000.
             self.total_write_latency = self.write_per_s * self.output.write_latency / 1000. / 1000.
         else:
-            total_read_access = math.ceil((8 * self.access_pattern.total_reads * self.access_pattern.read_size) / self.input_cfg.word_width) 
+            total_read_access = np.ceil((8 * self.access_pattern.total_reads * self.access_pattern.read_size) / self.input_cfg.word_width) 
             self.total_read_energy = total_read_access * self.output.read_energy / 1000. / 1000. / 1000.
-            total_write_access = math.ceil((8 * self.access_pattern.total_writes * self.access_pattern.write_size) / self.input_cfg.word_width) 
+            total_write_access = np.ceil((8 * self.access_pattern.total_writes * self.access_pattern.write_size) / self.input_cfg.word_width) 
             self.total_write_energy = total_write_access * self.output.write_energy / 1000. / 1000. /1000.
             self.total_read_latency = total_read_access * self.output.read_latency / 1000. / 1000. 
             self.total_write_latency = total_write_access * self.output.write_latency / 1000. / 1000.
@@ -162,7 +161,6 @@ class ExperimentResult:
             cell_cfg_path: Path to cell configuration file
             mem_cfg_path: Path to memory configuration file
         """
-        # Remove empty lines from cfg file to make processing easier
         if os.path.exists(mem_cfg_path):
             for line in fileinput.FileInput(mem_cfg_path, inplace=True):
                 if line.rstrip():
@@ -171,11 +169,9 @@ class ExperimentResult:
         cell_headers, cell_vals = parse_nvsim_input_file(cell_cfg_path)
         mem_headers, mem_vals = parse_nvsim_input_file(mem_cfg_path)
 
-        # Get memory type to determine which parameters to include
         cell_param_map = dict(zip(cell_headers, cell_vals)) if len(cell_headers) == len(cell_vals) else {}
         memory_type = cell_param_map.get("MemCellType", "")
         
-        # Generate dynamic header based on memory type
         row_to_insert = self._generate_dynamic_header(memory_type)
 
         with open(csv_file_path, "a+", newline='') as fp:
@@ -196,10 +192,8 @@ class ExperimentResult:
             mem_cfg_path: Path to memory configuration file
             access_pattern: Access pattern configuration
         """
-        # Check if output is available
         if self.output is None:
             raise ValueError("nvsim_output is required for reporting results")
-        # Remove empty lines from cfg file to make processing easier
         if os.path.exists(mem_cfg_path):
             for line in fileinput.FileInput(mem_cfg_path, inplace=True):
                 if line.rstrip():
@@ -208,7 +202,6 @@ class ExperimentResult:
         cell_headers, cell_vals = parse_nvsim_input_file(cell_cfg_path)
         mem_headers, mem_vals = parse_nvsim_input_file(mem_cfg_path)
 
-        # Extract bits per cell from filename
         if "1BPC" in csv_file_path:
             bits_per_cell = 1
         elif "2BPC" in csv_file_path:
@@ -218,18 +211,13 @@ class ExperimentResult:
         else:
             bits_per_cell = 1
 
-        # Extract extended parameters from configurations
         extended_params = self._extract_extended_parameters(cell_cfg_path, mem_cfg_path, cell_vals, mem_vals)
         
-        # Get memory type for dynamic row generation
         cell_param_map = dict(zip(cell_headers, cell_vals)) if len(cell_headers) == len(cell_vals) else {}
         memory_type = cell_param_map.get("MemCellType", "")
         
-        # Generate dynamic row based on memory type
         row_to_insert = self._generate_dynamic_row(memory_type, extended_params, cell_cfg_path, access_pattern, bits_per_cell)
 
-        # Don't append cell_vals and mem_vals since row_to_insert already contains all required data
-        # row_to_insert already contains all the values in the correct order
         
         with open(csv_file_path, "a", newline='') as fp:
             wr = csv.writer(fp, dialect='excel')
@@ -253,15 +241,12 @@ class ExperimentResult:
         """
         params = {}
         
-        # Create mapping from headers to values for cell parameters
         cell_headers, _ = parse_nvsim_input_file(cell_cfg_path)
         cell_param_map = dict(zip(cell_headers, cell_vals)) if len(cell_headers) == len(cell_vals) else {}
         
-        # Create mapping from headers to values for memory parameters
         mem_headers, _ = parse_nvsim_input_file(mem_cfg_path)
         mem_param_map = dict(zip(mem_headers, mem_vals)) if len(mem_headers) == len(mem_vals) else {}
         
-        # Universal config parameters (always shown for all memory types)
         universal_config_params = [
             "ProcessNode", "DeviceRoadmap", "DesignTarget", "OptimizationTarget",
             "LocalWireType", "LocalWireRepeaterType", "LocalWireUseLowSwing",
@@ -271,12 +256,10 @@ class ExperimentResult:
             "EnablePruning", "Capacity (KB)", "WordWidth (bit)"
         ]
         
-        # Universal cell parameters (always shown for all memory types) 
         universal_cell_params = [
             "MemCellType", "CellArea (F^2)", "CellAspectRatio", "AccessType", "ReadMode"
         ]
         
-        # Memory-specific parameters based on analysis
         memory_specific_params = {
             "SRAM": {
                 "SRAMCellNMOSWidth (F)", "SRAMCellPMOSWidth (F)", "AccessCMOSWidth (F)", 

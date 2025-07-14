@@ -1,7 +1,7 @@
 {
   "experiment": {
     "exp_name": "edram_test",
-    "cell_type": ["eDRAM1T", "eDRAM3T", "eDRAM3T_333"],
+    "cell_type": ["eDRAM1T", "eDRAM3T", "eDRAM3T333"],
     "opt_target": ["ReadLatency"],
     "capacity": [0.125],
     "bits_per_cell": [1],
