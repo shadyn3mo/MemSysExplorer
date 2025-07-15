@@ -1,7 +1,3 @@
-
-#define base cell definition and then specialize per technology
-#FIXME: refactor some of this to avoid duplication
-
 class NVSimCellConfig:
   def __init__(self,
                 cell_file_path="data/cell_cfgs/SRAM.cell",

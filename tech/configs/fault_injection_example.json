@@ -18,12 +18,7 @@
       "frac_bits": 4
     },
     "encoding": "dense",
-    "rep_conf": [2, 2, 2, 2, 2, 2],
-    "analysis": {
-      "compare_baseline": true,
-      "calculate_degradation": true,
-      "fault_statistics": true
-    }
+    "rep_conf": [2, 2, 2, 2, 2, 2]
   },
   "dram_fault_params": {
     "refresh_time": 64,
@@ -33,8 +28,6 @@
   "neural_network": {
     "enabled": false,
     "model_def_path": "",
-    "model_path": "",
-    "inject_weights": true,
-    "inject_activations": false
+    "model_path": ""
   }
 }

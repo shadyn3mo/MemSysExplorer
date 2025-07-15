@@ -23,12 +23,6 @@ sys.path.append(str(current_dir))
 from tentpoles import form_tentpoles
 from input_defs.nvsim_interface import NVSimInputConfig
 
-# Import fault injection controller
-try:
-    from .msxfi_controller import MSXFIController
-except ImportError:
-    MSXFIController = None
-
 class ArrayCharacterizationInterface:
     """
     Real interface to ArrayCharacterization/NVSim executable
@@ -54,17 +48,6 @@ class ArrayCharacterizationInterface:
         # Ensure directories exist
         self.mem_cfgs_dir.mkdir(parents=True, exist_ok=True)
         self.cell_cfgs_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Initialize fault injection controller if available and configured
-        self.fault_controller = None
-        if config and MSXFIController:
-            fault_config = config.get('fault_injection', {})
-            if fault_config.get('enabled', False):
-                try:
-                    self.fault_controller = MSXFIController(config)
-                    self.logger.info("Fault injection controller initialized")
-                except Exception as e:
-                    self.logger.warning(f"Failed to initialize fault injection: {e}")
         
         # Validate executable exists
         if not self.executable_path.exists():

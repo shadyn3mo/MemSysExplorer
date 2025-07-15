@@ -27,7 +27,7 @@ sys.path.append(str(project_root))
 # Import traffic evaluation components
 from integrate.traffic_evaluation.traffic import (
     generic_traffic, dnn_traffic, graph_traffic, spec_traffic, 
-    generic_traffic_with_write_buff, fault_aware_traffic_evaluation
+    generic_traffic_with_write_buff
 )
 from integrate.traffic_evaluation.eval_utils import ExperimentResult
 from integrate.data.workload_data import (
@@ -203,16 +203,9 @@ class MemSysExplorer:
                 result.evaluate()
                 result.report_header_benchmark(1, results_csv, cell_paths[0], cfg_paths[0])
                 
-                fault_injection_enabled = self.config.get('fault_injection', {}).get('enabled', False)
-                
                 if "generic" in self.traffic:
-                    if fault_injection_enabled:
-                        self.logger.info("Running fault-aware generic traffic sweep")
-                        fault_aware_traffic_evaluation(access_pattern, nvsim_input_cfgs, nvsim_outputs, 
-                                                      results_csv, cell_paths, cfg_paths, self.config, "generic")
-                    else:
-                        self.logger.info("→ Running traffic evaluation")
-                        generic_traffic(access_pattern, nvsim_input_cfgs, nvsim_outputs, 
+                    self.logger.info("→ Running traffic evaluation")
+                    generic_traffic(access_pattern, nvsim_input_cfgs, nvsim_outputs, 
                                       results_csv, cell_paths, cfg_paths)
                 
                 if "graph" in self.traffic:
@@ -221,13 +214,8 @@ class MemSysExplorer:
                                 results_csv, cell_paths, cfg_paths)
                 
                 if "dnn" in self.traffic:
-                    if fault_injection_enabled:
-                        self.logger.info("Running fault-aware DNN traffic sweep")
-                        fault_aware_traffic_evaluation(access_pattern, nvsim_input_cfgs, nvsim_outputs, 
-                                                      results_csv, cell_paths, cfg_paths, self.config, "dnn")
-                    else:
-                        self.logger.info("Running DNN traffic sweep")
-                        dnn_traffic(DNN_weights, DNN_weights_acts, access_pattern, 
+                    self.logger.info("Running DNN traffic sweep")
+                    dnn_traffic(DNN_weights, DNN_weights_acts, access_pattern, 
                                   nvsim_input_cfgs, nvsim_outputs, results_csv, cell_paths, cfg_paths)
                 
                 if "spec" in self.traffic:

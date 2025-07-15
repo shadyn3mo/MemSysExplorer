@@ -1,5 +1,3 @@
-# placeholder definition for an access pattern object, can be passed as input
-
 class PatternConfig:
   def __init__(self, 
 		exp_name="default", #name or ID
